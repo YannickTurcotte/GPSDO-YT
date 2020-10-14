@@ -1,4 +1,3 @@
-;nombre de seconde a changer dans debutcalibration.
 ;V 1.5
 ;1.5 Add delay to always start count at the same place. Correct some display error. wrong frequency was display of +- .006 some time or .002. 
 ;return in phase 4 after reset.
