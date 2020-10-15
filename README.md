@@ -6,8 +6,8 @@ Gpsdo Yannick.atsln  ---> Source file can be open with AtmelStudio 7
 
 The nop loop is very important. It assure to take only one cycle to enter and come out of an interruption.
 If you bypass the loop it will works. But the count will be +- .002 instead .001
-  
-;V 1.5
+
+# Version revision
 
 ;1.5 Add delay to always start count at the same place. Correct some display error. wrong frequency was display of +- .006 some time or .002. 
 ;return in phase 4 after reset.
