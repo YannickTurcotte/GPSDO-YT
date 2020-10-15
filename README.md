@@ -6,19 +6,6 @@ Gpsdo Yannick.atsln  ---> Source file can be open with AtmelStudio 7
 The nop loop is very important. It assure to take only one cycle to enter and come out of an interruption.
 If you bypass the loop it will works. But the count will be +- .002 instead .001
 
-Skip to content
-Search or jump to…
-
-Pull requests
-Issues
-Marketplace
-Explore
- 
-@YannickTurcotte 
-Learn Git and GitHub without any code!
-Using the Hello World guide, you’ll start a branch, write comments, and open a pull request.
-
-
 YannickTurcotte
 /
 GPSDO-YT
