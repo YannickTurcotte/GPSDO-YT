@@ -1,32 +1,11 @@
 # GPSDO-YT
+
 https://www.instructables.com/GPSDO-YT-10-Mhz-Lcd-2x16-With-LED/
 
 Gpsdo Yannick.atsln  ---> Source file can be open with AtmelStudio 7
 
 The nop loop is very important. It assure to take only one cycle to enter and come out of an interruption.
 If you bypass the loop it will works. But the count will be +- .002 instead .001
-
-YannickTurcotte
-/
-GPSDO-YT
-Private
-1
-00
-Code
-Issues
-Pull requests
-Actions
-Projects
-Security
-Insights
-Settings
-GPSDO-YT/Readme.txt
-@YannickTurcotte
-YannickTurcotte Update Readme.txt
-Latest commit 3db4372 22 minutes ago
- History
- 1 contributor
-37 lines (36 sloc)  3.21 KB
   
 ;V 1.5
 
