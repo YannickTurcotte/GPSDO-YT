@@ -72,8 +72,8 @@ kjkj:		;on compte 7 virgules. Ensuite on lit le nombre de satellites.
 pasmoduleublox:
 		lds temp, satelliteh		;prend 9
 		sts satellitel, temp		;on le met dans le low
-		clr temp				
-		sts satelliteh, temp		;et on met 0 dans le high pour 09
+		ldi temp, $30				
+		sts satelliteh, temp		;et on met 30 dans le high pour afficher le 0 ---- > 09
 		ret
 
 ;*********************************************************************************************************
