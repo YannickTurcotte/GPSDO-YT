@@ -37,8 +37,9 @@ TX: ; Wait for empty transmit buffer
 		sbrs r17,UDRE0         ;the buffer is empty, and therefore ready to be written.. Skip next instruction If Bit Register is set 
 		rjmp TX 
 		STORE UDR0,r16		   ; Put data (r0) into buffer, sends the data 
-		ret 
+		ret
 
+;Ramasse le nombre de satellite et le met dans sateiilteh,l
 checkgpgga:	;$GPGGA pour neo 6m MAIS GNGGA sur neo 8M Donc je regarde pour seulement GGA
 		wdr
 		rcall rx
@@ -60,14 +61,25 @@ kjkj:		;on compte 7 virgules. Ensuite on lit le nombre de satellites.
 		cpi r18, $07
 		brne kjkj		;compte 7 virgules
 ;ici s'en vienne les 2 nombres ascii. Exemple 31, 32 pour 12.
+;Addition de code pour gerer les gps module qui envois 9 au lieu de 09.
 		rcall rx
 		sts satelliteh, temp
 		rcall rx
 		sts satellitel, temp		;ici le nombre de satellites est en ascii dans satelliteh:satellitel  exemple 31:32 pour afficher 12.
+		cpi temp, $2c				;regarde si nous avous recu 9 virgule au lieu de 09
+		breq pasmoduleublox
+		ret
+pasmoduleublox:
+		lds temp, satelliteh		;prend 9
+		sts satellitel, temp		;on le met dans le low
+		clr temp				
+		sts satelliteh, temp		;et on met 0 dans le high pour 09
 		ret
 
+;*********************************************************************************************************
+;*********************************************************************************************************
 affichesatellite:
-		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
+		load r16, UCSR0A	;regarde si ya de quoi qui a Ã©tÃ© recu par le serial
 		sbrs r16, RXC0		;skip if bit in register is set
 		ret					;rxc0 est a 0 on a rien recu
 ;on a recu de quoi sur le serial
@@ -84,41 +96,18 @@ onpeut:
 		rcall message
 		lds temp, satelliteh
 		rcall afficheascii
-		lds temp, satelliteh
 		rcall tx
 		lds temp, satellitel
 		rcall afficheascii
-		rcall espace
-		lds temp, satellitel
 		rcall tx
 		rcall nextline
-
-;dois comparer si on a plus que 3 sat et allumer le led sinon le fermer..
-		lds temp, satelliteh
-		subi temp, $30
-		lsl temp
-		lsl temp
-		lsl temp
-		lsl temp
-		lds r17, satellitel
-		subi r17, $30
-		add temp, r17
-		cpi temp, $3
-		brge onallumeleled2
-		;sinon on ferme le led
-		load temp, portd
-		cbr temp, 0b10000000
-		out portd, temp
+		call SatelliteLedDriver
 		ret
-onallumeleled2:
-		load temp, portd
-		sbr temp, 0b10000000
-		out portd, temp
-		ret
-
-
+;*********************************************************************************************************
+;*********************************************************************************************************
+;S=12
 affichesatellite2:
-		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
+		load r16, UCSR0A	;regarde si ya de quoi qui a Ã©tÃ© recu par le serial
 		sbrs r16, RXC0
 		ret					;rxc0 est a 0 on a rien recu
 		rcall checkgpgga	;on ramasse le nombre de satellite
@@ -137,9 +126,13 @@ affichesatellite2:
 		call tx
 		ldi temp, $2c		;,
 		call tx
-
+		call SatelliteLedDriver
+		ret
+;*********************************************************************************************************
+;*********************************************************************************************************
+SatelliteLedDriver:
 ;dois comparer si on a plus que 3 sat et allumer le led sinon le fermer..
-		lds temp, satelliteh
+		lds temp, satelliteh	;39 2c
 		subi temp, $30
 		lsl temp
 		lsl temp
@@ -151,22 +144,22 @@ affichesatellite2:
 		cpi temp, $3
 		brge onallumeleled22
 		;sinon on ferme le led
-		cbi portd, 7
+		call SatLedOff
 		ret
 onallumeleled22:
-		sbi portd, 7
+		call SatLedOn
 		ret
 
-;****************************************************************************************************************************************************************************************
-;****************************************************************************************************************************************************************************************
-;****************************************************************************************************************************************************************************************
-;*********************************************************************************************************************
+;*********************************************************************************************************
+;*********************************************************************************************************
+;*********************************************************************************************************
+;*********************************************************************************************************
 ;$GPGGA,hhmmss.ss,llll.ll,a,yyyyy.yy,a,x,xx,x.x,x.x,M,x.x,M,x.x,xxxx*hh
 afficheheureposition:
 ;affiche heure pour 10 secondes
 		rcall videecran
 		call nextline
-		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
+		load r16, UCSR0A	;regarde si ya de quoi qui a Ã©tÃ© recu par le serial
 		sbrs r16, RXC0		;skip if bit in register is set
 		rjmp nosat					;rxc0 est a 0 on a rien recu pas de signal
 		ldi r26, 10
@@ -210,7 +203,7 @@ afseconde:
 		rcall afficheascii
 		call tx
 attendprochaineseconde:
-		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
+		load r16, UCSR0A	;regarde si ya de quoi qui a Ã©tÃ© recu par le serial
 		sbrs r16, RXC0		;skip if bit in register is set
 		rjmp attendprochaineseconde				;rxc0 est a 0 on a rien recu
 		dec r26
@@ -248,7 +241,7 @@ aflatitude:
 		call tx
 suitelatitude:
 		ld	r0, z+			;
-		mov temp, r0	;compare avec virgule.... pourquoi ? parce que dans différent module il n'y a pas toujours le meme nombres de chiffre apres le point.
+		mov temp, r0	;compare avec virgule.... pourquoi ? parce que dans diffÃ©rent module il n'y a pas toujours le meme nombres de chiffre apres le point.
 		cpi temp, $2c ;,
 		breq emisphere
 		rcall afficheascii
@@ -311,6 +304,9 @@ nosat:
 ;****************************************************************************************************************************************************************************************
 ;****************************************************************************************************************************************************************************************
 ;****************************************************************************************************************************************************************************************
+
+;check heure seulement
+
 checkgpggahp:	;$GPGGA pour neo 6m MAIS GNGGA sur neo 8M Donc je regarde pour seulement GGA
 ;checkgga heure position et store dans memoire heure et position
 ;$xxGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
@@ -324,7 +320,6 @@ checkgpggahp:	;$GPGGA pour neo 6m MAIS GNGGA sur neo 8M Donc je regarde pour seu
 		rcall rx
 		cpi temp, $41	;A
 		brne checkgpggahp
-		;ici on a detecter $GPGGA on doit rammaser le nombre de satellite
 		clr r18
 kjkj1:		;on compte 1 virgules.
 		rcall rx
@@ -379,7 +374,9 @@ donegga:
 ;		46`19.81427 m. N
 
 ;**********************************************************************************************
-affichenombreSerial: 	;affiche un nombre DCB. Exemple si 0x17 est dans temp. 17 sera affiché sur port serie
+;**********************************************************************************************
+;**********************************************************************************************
+affichenombreSerial: 	;affiche un nombre DCB. Exemple si 0x17 est dans temp. 17 sera affichÃ© sur port serie
 		push temp		;17	;On additionne 30 sur lsb et msb donc 17 = 31 + 37
 		swap temp		;71
 		andi temp, $0F	;1
@@ -391,7 +388,7 @@ affichenombreSerial: 	;affiche un nombre DCB. Exemple si 0x17 est dans temp. 17 
 		rcall tx
 		ret
 ;***************************************************************************************
-affichenombreSerialhigh: 	;affiche un nombre DCB. Exemple si 0x17 est dans temp. 17 sera affiché sur port serie
+affichenombreSerialhigh: 	;affiche un nombre DCB. Exemple si 0x17 est dans temp. 17 sera affichÃ© sur port serie
 		push temp
 		swap temp		;71
 		andi temp, $0F	;1
@@ -408,11 +405,11 @@ affichenombreSeriallow:
 		ret
 ;***************************************************************************************
 messageserial:
-		lpm				;lpm = load program memory. Le contenu de l'adresse pointé par Z se retrouve dans R0
-		mov temp, r0	;comparons r0 avec 04 pour vois si le message est à la fin
+		lpm				;lpm = load program memory. Le contenu de l'adresse pointÃ© par Z se retrouve dans R0
+		mov temp, r0	;comparons r0 avec 04 pour vois si le message est Ã  la fin
 		cpi temp, $04
 		breq finmessageserial
-		mov temp, r0  	;Il faut séparer la valeur lu, exemple:(41) en 40 et 10 pour envoyer à l'afficheur
+		mov temp, r0  	;Il faut sÃ©parer la valeur lu, exemple:(41) en 40 et 10 pour envoyer Ã  l'afficheur
 		rcall tx
 		adiw ZH:ZL,1	;incremente zh,zl et va relire l'addresse suivante
 		rjmp messageserial
@@ -436,7 +433,7 @@ affichegate10ksserial:
 		ret
 ;***************************************************************************************
 affichesatellite2serial:
-		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
+		load r16, UCSR0A	;regarde si ya de quoi qui a Ã©tÃ© recu par le serial
 		sbrs r16, RXC0
 		ret					;rxc0 est a 0 on a rien recu
 		rcall checkgpgga	;on ramasse le nombre de satellite
@@ -466,9 +463,9 @@ affichememoireserial:
 		swap temp		;exemple 3A
 		andi temp, $0f	;on garde le  3
 		ldi r31,high(hexa*2) ;pointe l'addresse le la database dans R0
-		ldi r30,low(hexa*2)	; l'addresse de mémoire;
+		ldi r30,low(hexa*2)	; l'addresse de mÃ©moire;
 		add ZL, temp		;augmente l'adresse pour pointer le bon chiffre (r31 et r30 constitue zh et zl)
-		brcc okpasdedepassementqserial	;(branch if carry est 0) si le carry est a 1 (il y a une retenue) = plus que FF on incrémente donc zh. Sinon il passe et laisse zl normal
+		brcc okpasdedepassementqserial	;(branch if carry est 0) si le carry est a 1 (il y a une retenue) = plus que FF on incrÃ©mente donc zh. Sinon il passe et laisse zl normal
 		inc zh
 okpasdedepassementqserial:
 		lpm
@@ -477,9 +474,9 @@ okpasdedepassementqserial:
 		pop temp
 		andi temp, $0f	;on garde le  3
 		ldi r31,high(hexa*2) ;pointe l'addresse le la database dans R0
-		ldi r30,low(hexa*2)	; l'addresse de mémoire;
+		ldi r30,low(hexa*2)	; l'addresse de mÃ©moire;
 		add ZL, temp		;augmente l'adresse pour pointer le bon chiffre (r31 et r30 constitue zl et zh)
-		brcc okpasdedepassement7qserial	;(branch if carry est 0) si le carry est a 1 (il y a une retenue) = plus que FF on incrémente donc zh. Sinon il passe et laisse zl normal
+		brcc okpasdedepassement7qserial	;(branch if carry est 0) si le carry est a 1 (il y a une retenue) = plus que FF on incrÃ©mente donc zh. Sinon il passe et laisse zl normal
 		inc zh
 okpasdedepassement7qserial:
 		lpm
