@@ -1,9 +1,9 @@
 ;.dseg	;data segment de 512 sur atmega48
 data1:
-	.db "1000s gate 1.56q" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.58q" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data2:	
-	.db "1000s gate 1.56c" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.58c" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data3:
 	.db "wait 15 min     " ;
@@ -89,6 +89,9 @@ data39:
 data40:
 	.db "Last Frequency =" ; ,04 si impair
 	.db $04,00
+data41:
+	.db "Too much, Stall " ; ,04 si impair
+	.db $04,00
 hexa:
 
 .db		$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$41,$42,$43,$44,$45,$46
@@ -98,7 +101,8 @@ hexa:
 reset_afficheur:	;sous routine pour initialiser l'afficheur pour la premieres fois.
 		ldi r16, $03 ;$30     ;ici Je force l'afficheur à être sur 8 bits.
         out portc, r16	;en lui envoyant la commande 3x
-        rcall enable	;MET 1 SUR LA BROCHE E. Il faut le forcer en 8 bits avant. Pourquoi ??? Pour quand on reset!
+        rcall enable	;MET 1 SUR LA BROCHE E
+	  					;il faut le forcer en 8 bits avant. Pourquoi ??? Pour quand on reset!
 		ldi r16,$03    	;Si on est en mode 4 bit... on envois 2 trame de 4 bits. Quand on reset
         out portc, r16	;entre les 2 trames, la seconde reçu n'est pas la bonne et l'afficheur écrit
         rcall enable	;n'importe quoi.
@@ -188,7 +192,7 @@ posifin:
         ret
 
 ;************************** posisat *************************
-posisat:
+posisat:  
 		ldi temp,$08	;94		;positionne sur les 3 dernier digit de la premiere ligne pour afficher les sattelite
        	out portc,r16
         rcall enable
@@ -447,6 +451,16 @@ afficherunmode:
 		rcall affichepwm
 		ldi r31,high(data34*2)  	;0x7fff 1ks S=12
 		ldi r30,low(data34*2)
+		rcall message
+		ret
+
+
+;*************************** affichestall **************************************
+affichestall:
+		rcall nextline
+		rcall posi1
+		ldi r31,high(data41*2)  	;Too much, stall
+		ldi r30,low(data41*2)
 		rcall message
 		ret
 

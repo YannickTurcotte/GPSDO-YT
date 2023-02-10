@@ -326,3 +326,293 @@ Com32:	com	r20		;	&
 		com	r22		;
 		com	r23		;   return set carry after com
 		ret
+
+;*************************************************************************************************************************************
+;*************************************************************************************************************************************
+;*************************************************************************************************************************************
+compare: ;compare la frequence optenu avec la réréfence et signe si c'est negatif ou positif. sign = 1 pour positif. 0 = negatif
+	;on charge la frequence en hex commancant par le msb
+	lds r16, frequence_5	;msb 02
+	lds r17, frequence_4	;54
+	lds r18, frequence_3	;0b
+	lds r19, frequence_2	;e4
+	lds r20, frequence_1	;lsb 00
+
+;ldi r21,7
+;sts calibrationphase,r21
+
+;ldi r16,$2
+;sts frequence_5,r16
+;ldi r17,$54
+;sts frequence_4,r17
+;ldi r18,$0b
+;sts frequence_3,r18
+;ldi r19,$E3
+;sts frequence_2,r19
+;ldi r20,$a6
+;sts frequence_1,r20
+
+	lds r21,calibrationphase	;sense on est rendu ou
+	cpi r21, 1
+	breq comparephase1
+	cpi r21, 2
+	breq comparephase2
+	cpi r21, 3
+	breq comparephase3
+	cpi r21, 4
+	breq comparephase4
+	;forcement 5 ou 6 donc 1billion
+	rcall F1000secondes		;charge le bon nombre a comparer. 10 million, 60 200 ou 1 milliar
+	rjmp compareensemble
+comparephase1:	;10,000,000
+	rcall F1seconde
+	rjmp compareensemble
+comparephase2:	;100,000,000
+	rcall F10secondes
+	rjmp compareensemble
+comparephase3:	;600,000,000
+	rcall F60secondes
+	rjmp compareensemble
+comparephase4:	;2,000,000,000
+	rcall F200secondes
+	rjmp compareensemble
+
+compareensemble:
+	cp r16,r21 ;compare r16 avec r21
+    breq equal ; if equal, check next byte
+    ; check if the variable is greater than the number
+    brcc greater
+    ; if the carry flag is clear, the variable is less than the number
+    rjmp plusbas
+
+equal:
+    ; Compare the next most significant byte
+    cpc r17, r22
+    breq equal2 ; if equal, check next byte
+    brcc greater
+    rjmp plusbas
+    
+equal2:
+    ; Compare the next byte
+    cpc r18, r23
+    breq equal3 ; if equal, check next byte
+    brcc greater
+    rjmp plusbas
+    
+equal3:
+    ; Compare the next byte
+    cpc r19, r24
+    breq equal4 ; if equal, check next byte
+    brcc greater
+    rjmp plusbas
+    
+equal4:
+    ; Compare the next byte
+    cpc r20, r25
+    breq equal5 ; if equal, check next byte
+    brcc greater
+    rjmp plusbas
+    
+equal5: ;egale ou plus grand
+greater:
+	call subtraction40bitsPositif	;trouve et save la difference
+    ldi temp,0x01					;signed
+	sts sign, temp
+	ret
+plusbas:
+	call subtraction40bitsNegatif	;trouve et save la difference
+	clr temp						;signed
+	sts sign, temp
+	ret
+;****************************************************************************************************************
+subtraction40bitsPositif:
+;frequence, resultat dans R16-R20. Frequence est superieur a la référence.
+	;on charge la frequence en hex commancant par le msb
+	lds r16, frequence_5
+	lds r17, frequence_4
+	lds r18, frequence_3
+	lds r19, frequence_2
+	lds r20, frequence_1
+
+	; on recharge la frequence de comparaison
+	lds r21,calibrationphase	;sense on est rendu ou
+	cpi r21, 1
+	breq load1
+	cpi r21, 2
+	breq load2
+	cpi r21, 3
+	breq load3
+	cpi r21, 4
+	breq load4
+	;forcement 5 ou 6 donc 1billion
+	rcall F1000secondes
+	rjmp Onsoustrait1
+load1:	;10,000,000
+	rcall F1seconde
+	rjmp Onsoustrait1
+load2:	;100,000,000
+	rcall F10secondes
+	rjmp Onsoustrait1
+load3:	;600,000,000
+	rcall F60secondes
+	rjmp Onsoustrait1
+load4:	;2,000,000,000
+	rcall F200secondes
+	rjmp Onsoustrait1
+Onsoustrait1:
+; Subtract the most significant byte
+    sub r16,r21
+    sbc r17,r22
+    sbc r18,r23
+    sbc r19,r24
+    sbc r20,r25
+	sts difference_1, r20	;lsb
+	sts difference_2, r19
+	sts difference_3, r18
+	sts difference_4, r17
+	sts difference_5, r16	;msb
+	ret
+
+;****************************************************************************************************************
+subtraction40bitsNegatif:
+;frequence, resultat dans R16-R20. 
+	;on charge la frequence en hex commancant par le msb
+	lds r16, frequence_5
+	lds r17, frequence_4
+	lds r18, frequence_3
+	lds r19, frequence_2
+	lds r20, frequence_1
+	; on recharge la frequence de comparaison
+	lds r21,calibrationphase	;sense on est rendu ou
+	cpi r21, 1
+	breq load1a
+	cpi r21, 2
+	breq load2a
+	cpi r21, 3
+	breq load3a
+	cpi r21, 4
+	breq load4a
+	;forcement 5 ou 6 donc 1billion
+	rcall F1000secondes
+	rjmp Onsoustrait1a
+load1a:	;10,000,000
+	rcall F1seconde
+	rjmp Onsoustrait1a
+load2a:	;100,000,000
+	rcall F10secondes
+	rjmp Onsoustrait1a
+load3a:	;600,000,000
+	rcall F60secondes
+	rjmp Onsoustrait1a
+load4a:	;2,000,000,000
+	rcall F200secondes
+	rjmp Onsoustrait1a
+Onsoustrait1a:
+; Subtract lsb first
+    sub r25,r20
+	sbc r24,r19
+	sbc r23,r18
+	sbc r22,r17
+	sbc r21,r16
+	sts difference_1, r25	;lsb
+	sts difference_2, r24
+	sts difference_3, r23
+	sts difference_4, r22
+	sts difference_5, r21	;msb
+	ret
+;**************************** constante
+F1seconde:
+	ldi r21, 0x00	;msb
+	ldi r22, 0x00
+	ldi r23, 0x98
+	ldi r24, 0x96
+	ldi r25, 0x80	;lsb
+	ret
+F10secondes: ;100,000,000
+	ldi r21, 0x00	;msb
+	ldi r22, 0x05
+	ldi r23, 0xf5
+	ldi r24, 0xe1
+	ldi r25, 0x00	;lsb
+	ret
+F60secondes: ;600,000,000
+	ldi r21, 0x00	;msb
+	ldi r22, 0x23
+	ldi r23, 0xc3
+	ldi r24, 0x46
+	ldi r25, 0x00	;lsb
+	ret
+F200secondes: ;200 secondes
+	ldi r21, 0x00	;msb
+	ldi r22, 0x77
+	ldi r23, 0x35
+	ldi r24, 0x94
+	ldi r25, 0x00	;lsb
+	ret
+F1000secondes:
+	ldi r21, 0x02	;msb
+	ldi r22, 0x54
+	ldi r23, 0x0B
+	ldi r24, 0xE4
+	ldi r25, 0x00	;lsb
+	ret
+
+;*************************************************************************************************************************************
+;*************************************************************************************************************************************
+compare2: ;charge la difference optenu et compare avec 0x32 (50) si plus haut, toolargeflag is set.
+	lds r16, difference_5 ;msb
+	lds r17, difference_4
+	lds r18, difference_3
+	lds r19, difference_2
+	lds r20, difference_1 ;lsb
+
+	ldi r21, 0x00	;msb
+	ldi r22, 0x00
+	ldi r23, 0x00
+	ldi r24, 0x00
+	ldi r25, 0x32	;lsb	compare avec 0x32 (50)
+
+	cp r16,r21
+    breq equal1 ; if equal, check next byte
+    ; check if the variable is greater than the number
+    brcc greater1
+    ; if the carry flag is clear, the variable is less than the number
+    rjmp plusbas1
+
+equal1:
+    ; Compare the next most significant byte
+    cpc r17, r22
+    breq equal21 ; if equal, check next byte
+    brcc greater1
+    rjmp plusbas1
+    
+equal21:
+    ; Compare the next byte
+    cpc r18, r23
+    breq equal31 ; if equal, check next byte
+    brcc greater1
+    rjmp plusbas1
+    
+equal31:
+    ; Compare the next byte
+    cpc r19, r24
+    breq equal41 ; if equal, check next byte
+    brcc greater1
+    rjmp plusbas1
+    
+equal41:
+    ; Compare the next byte
+    cpc r20, r25
+    breq equal51 ; if equal, check next byte
+    brcc greater1
+    rjmp plusbas1
+    
+equal51: ;egale ou plus grand
+greater1:
+    ldi temp,0x01					;signed
+	sts toolargeflag, temp
+	ret
+plusbas1:
+	clr temp						;signed
+	sts toolargeflag, temp
+	ret
