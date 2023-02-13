@@ -3,7 +3,7 @@
 .Org $0000
 .include "int_atmega328p.inc"
 
-;définition des régistres.
+;dÃ©finition des rÃ©gistres.
 .def temp =R16	
 .def temp2=R17
 
@@ -103,15 +103,15 @@
 .equ Hit = 0x02 ; when the RUN led is on. For exemple for 2 if + or - .002 the led will be on outside of this off
 
 ;phase1
-.equ Phase1Jump_H = 0x02
+.equ Phase1Jump_H = 0x02	;Exemple here: 0x0222
 .equ Phase1Jump_L = 0x22
 ;phase2
-.equ Phase2Jump_H = 0x01
+.equ Phase2Jump_H = 0x01	;Exemple here: 0x0100
 .equ Phase2Jump_L = 0x00
 
 ;phase3
 ;Classic
-.equ Phase3Jump_H = 0x00
+.equ Phase3Jump_H = 0x00	;Exemple here: 0x002b
 .equ Phase3Jump_L = 0x2b
 ;Quick
 .equ Phase3QuickLittleStep_H = 0x00
@@ -160,7 +160,7 @@
 ;********************************* RESET *******************************************
 ;***********************************************************************************
 RESET:	ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp 
 
@@ -173,7 +173,7 @@ RESET:	ldi	temp,low(RAMEND)
 		ldi temp, 0b00010011
 		out ddrb, temp	;port b en sortie pour pwm et un led pb0. PB4 en sortie avec 0v pour detection avec pb5 en entree(jumper)
 		com temp
-		out portb,temp	;met les pull up sur les entrées et met 0v sur les sorties. Le LED sur pb0 warming est off
+		out portb,temp	;met les pull up sur les entrÃ©es et met 0v sur les sorties. Le LED sur pb0 warming est off
 		ser temp
 		out ddrc, temp	;afficheur portc en sortie
 		ldi temp, 0b11100000
@@ -184,7 +184,7 @@ RESET:	ldi	temp,low(RAMEND)
 		out portc, temp	;afficheur tous les broches du port C a 0
 ;interrupt
 		ldi temp, (0<<int0)|(1<<int1)	;active int1 push button seulement pour commencer. 
-		out EIMSK,temp		;active int1 dans External Interrupt Mask Register – EIMSK
+		out EIMSK,temp		;active int1 dans External Interrupt Mask Register â€“ EIMSK
 		ldi temp, (1<<ISC01)|(1<<ISC00)|(1<<ISC11)|(0<<ISC10)	;falling edge les 2
 		sts eicra, temp
 ;initialisation du pointeur de eeprom
@@ -213,8 +213,8 @@ QuickOrClassicEnd: ;
 		lds temp, QuickOrClassic
 		cpi temp, 1
 		brne classicmode1
-		ldi r31,high(data7*2)  		;"GPSDO YT 1.58q "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
-		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait
+		ldi r31,high(data7*2)  		;"GPSDO YT 1.58q "    Ici on va chercher l'addresse mÃ©moire ou se retrouve le data Ã  afficher.
+		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constituÃ© en fait
 		call message
 		call nextline
 		call posi2
@@ -225,8 +225,8 @@ QuickOrClassicEnd: ;
 		call tx
 		rjmp classicmode2						;du registre R31 et R30. Z est en fait 16 bits de long.
 classicmode1:
-		ldi r31,high(data7*2)  		;"GPSDO YT 1.58c "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
-		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait
+		ldi r31,high(data7*2)  		;"GPSDO YT 1.58c "    Ici on va chercher l'addresse mÃ©moire ou se retrouve le data Ã  afficher.
+		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constituÃ© en fait
 		call message				;dans message, on affiche ce que pointe Z "ceci est un test"
 		call nextline
 		call posi2
@@ -254,17 +254,17 @@ classicmode2:
 ;Sonde le push button, si pushbutton est enfonce = reset eeprom par valeur default 
 		sbic pind, pd3		;(Skip if Bit in I/O Register is Cleared)
 		rjmp valeureepromutilise			
-		call videecran		;push button est appuyé = reset default
+		call videecran		;push button est appuyÃ© = reset default
 		call posi1
-		ldi r31,high(data20*2)  	;Set to default                Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
-		ldi r30,low(data20*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait du registre R31 et R30. Z est en fait 16 bits de long.								
+		ldi r31,high(data20*2)  	;Set to default                Ici on va chercher l'addresse mÃ©moire ou se retrouve le data Ã  afficher.
+		ldi r30,low(data20*2)		;cette addresse se retrouve dans le registe Z. Qui est constituÃ© en fait du registre R31 et R30. Z est en fait 16 bits de long.								
 		call message				;dans message, on affiche ce que pointe Z "ceci est un test"
 		call nextline
 		call effaceeeprom
 		call tempo5s
 	
 valeureepromutilise:	
-;Push button pas appuyé.
+;Push button pas appuyÃ©.
 		call eepromr			;va lire la config du eeprom et se retrouve dans pwmphase6h, 6l
 		lds r17, pwmphase6l
 		lds r18, pwmphase6h
@@ -272,7 +272,7 @@ valeureepromutilise:
 		cp r17, temp			;compare avec FF. Si = veux dire que le eeprom est vide ou a ses valeurs par default. On part donc avec un pwm 50%
 		cpc r18, temp			;cp cpc est pour comparer 32 bit ensemble.
 		breq pasdevaleurdanseeprom2
-;Valeur trouvé.
+;Valeur trouvÃ©.
 		lds temp, pwmphase6h
 		sts ocr1ah, temp
 		lds temp, pwmphase6l	
@@ -288,11 +288,11 @@ valeureepromutilise:
 		ldi r30,low(data24*2)	
 		call message
 		lds temp, pwmphase6h
-		call affichememoire		;affiche la valeur du eeprom trouvé
+		call affichememoire		;affiche la valeur du eeprom trouvÃ©
 		lds temp, pwmphase6l
 		call affichememoire
 		lds temp, pwmphase6h
-		call affichememoireserial		;affiche la valeur du eeprom trouvé
+		call affichememoireserial		;affiche la valeur du eeprom trouvÃ©
 		lds temp, pwmphase6l
 		call affichememoireserial
 		call nextline
@@ -301,7 +301,7 @@ valeureepromutilise:
 		sts calibrationphase, temp
 		rjmp ytyt
 pasdevaleurdanseeprom2:
-;Aucune valeur trouvé dans eeprom (FFFF) nous commencons donc le pwm a 50%
+;Aucune valeur trouvÃ© dans eeprom (FFFF) nous commencons donc le pwm a 50%
 		ldi temp, $7f	;ffff = 100 7fff = 50%
 		sts ocr1ah, temp
 		ldi temp, $ff		
@@ -337,8 +337,8 @@ ytyt:
 		sts wait_flag, temp	;flag est a 1 on est dans la boucle d'attente
 		call debutcalibration ;waiting time 15 min for heatup oscillator. peut etre bypassed par push button.
 watchdogsetup:	;active int watchdog 1 secondes. Si le gps pulse manque un pulse. Le watchdow timeout et on passe en mode selfrunning
-		wdr		;Au debut je croyais que 1 seconde serait trop court car on a seulement un wdr a chaque seconde. Après test, aucun probleme, J'imagine que le watchdog est un peu plus lent.
-		ldi temp, (1<<WDCE)|(1<<WDE) ;toujours envoyé ces 2 valeurs en premier, ensuite en dedans de 4 clock nous pouvons changer le registre
+		wdr		;Au debut je croyais que 1 seconde serait trop court car on a seulement un wdr a chaque seconde. AprÃ¨s test, aucun probleme, J'imagine que le watchdog est un peu plus lent.
+		ldi temp, (1<<WDCE)|(1<<WDE) ;toujours envoyÃ© ces 2 valeurs en premier, ensuite en dedans de 4 clock nous pouvons changer le registre
 		sts	WDTCSR,temp
 		ldi temp, (0<<WDE)|(1<<WDIE)|(0<<wdp3)|(1<<wdp2)|(1<<wdp1)|(1<<wdp0) ;enable watchdog 2s. interrupt seulement pas de reset
 		sts WDTCSR,temp
@@ -349,10 +349,10 @@ watchdogsetup:	;active int watchdog 1 secondes. Si le gps pulse manque un pulse.
 ;on est ou ? On regarde on commence a quel phase.... Run ou au debut ?
 		lds temp, calibrationphase
 		cpi temp, $06
-		breq onpassedirectarun	;ca n'égalle pas ff donc ya une valeur la config a déja été fait on passe en mode run
+		breq onpassedirectarun	;ca n'Ã©galle pas ff donc ya une valeur la config a dÃ©ja Ã©tÃ© fait on passe en mode run
 		rjmp phase1				;sinon on est en phase 1
 onpassedirectarun:
-		rjmp phase4 ;apres experience meme en revenant avec une config ca doit etre reajusté un peu, on va a phase 4
+		rjmp phase4 ;apres experience meme en revenant avec une config ca doit etre reajustÃ© un peu, on va a phase 4
 
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
@@ -366,7 +366,7 @@ onpassedirectarun:
 ;CORRECTION apres calcul sur 10 secondes ocxo varie de 962 a 1046 donc 84  de difference entre 0-5v
 ;ca qui donne 8.4 hz et non 10hz (2hz/v) Le pas passe est donc a 128.175uv au lieu de 152.59uv
 ;donc a3d devien c30
-;MAIS comme j'ai ajouté un unreachable frequency. des saut de c30 c'est beaucoup pour certain ocxo qui sont peut etre au bord des limite. J'ai eu quelque painte que
+;MAIS comme j'ai ajoutÃ© un unreachable frequency. des saut de c30 c'est beaucoup pour certain ocxo qui sont peut etre au bord des limite. J'ai eu quelque painte que
 ;ca ne fonctionnait plus depuis cette mise a jour. Je garderai donc a3d.. non plutot 222. FFFF / (60 secondes) 2 donc pour la phase 1 de plus petit coup pour un maximun de 120 seconde qui donne 60 seconde car on commence au millieu.
 ;donc le maximun qu'on devrait rester en phase 1 sera de 60 secondes et le unreachable frequency  
 ;calibration phase 1,
@@ -384,12 +384,12 @@ phase1next:
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase	;c'est égale on passe a la phase suivante
+		breq nextphase	;c'est Ã©gale on passe a la phase suivante
 		lds temp, sign		;si = 1 = positif donc trop rapide
 		cpi temp, $0	
 		breq Frequence_trop_basse
 		;Frequence_trop_haute:
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
 		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
@@ -397,11 +397,11 @@ phase1next:
 		subi xl, Phase1Jump_L	;Subtract low bytes
 		sbci xh, Phase1Jump_H		;Add high byte with carry
 		cp xl, r20		;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21		;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21		;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable1
 		sts ocr1ah, xh		
 		sts ocr1al, xl
-		call affichephase1	;Je dois réafficher car si le nombre de sattelite change, ca doit être refresh
+		call affichephase1	;Je dois rÃ©afficher car si le nombre de sattelite change, ca doit Ãªtre refresh
 		call affichesatellite2
 		rjmp Retour_en_mode_interrupt
 unreachable1: rjmp unreachable				
@@ -418,7 +418,7 @@ Frequence_trop_basse:		;faut augmenteraugement pwm
 		ldi temp2 ,Phase1Jump_H		;Add high byte with carry
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable1
 		sts ocr1ah, xh
@@ -451,12 +451,12 @@ phase2next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase2	;c'est égale on passe a la phase suivante
+		breq nextphase2	;c'est Ã©gale on passe a la phase suivante
 		lds temp, sign		;si = 1 = positif donc trop rapide
 		cpi temp, $0	
 		breq Frequence_trop_basse2
 		;Frequence_trop_haute:
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
 		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
@@ -464,7 +464,7 @@ phase2next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		subi xl,Phase2Jump_L
 		sbci xh,Phase2Jump_H
 		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable2
 		sts ocr1ah, xh		
 		sts ocr1al, xl
@@ -486,7 +486,7 @@ Frequence_trop_basse2:
 		ldi temp2 ,Phase2Jump_H		;Add high byte with carry
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable2
 		sts ocr1ah, xh
@@ -521,7 +521,7 @@ phase3next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase3	;c'est égale on passe a la phase suivante
+		breq nextphase3	;c'est Ã©gale on passe a la phase suivante
 		lds temp, sign		;si = 1 = positif donc trop rapide
 		cpi temp, $0	
 		breq Frequence_trop_basse3
@@ -529,7 +529,7 @@ phase3next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		lds temp, QuickOrClassic
 		cpi temp, 1
 		brne classic_1
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		;je regarde si je corrige un peu ou beaucoup
 		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
 		cpi temp2, 1
@@ -544,7 +544,7 @@ classic_1:
 Cavautlapeine3a:
 		ldi temp, Phase3QuickLargeStep		;on charge le pas. 60s = 7 1/(60x152.59uhz) = 109.22
 		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul3a:
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
@@ -553,7 +553,7 @@ calcul3a:
 		sub xl, temp
 		sbc	xh,temp2
 		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable3
 		sts ocr1ah, xh		
 		sts ocr1al, xl
@@ -591,7 +591,7 @@ classic_2:
 Cavautlapeine3b:
 		ldi temp, Phase3QuickLargeStep		;on charge le pas. 60s = 7 1/(60x152.59uhz) = 109.22
 		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul3b:
 		lds xh, ocr1ah
 		lds xl,ocr1al
@@ -599,7 +599,7 @@ calcul3b:
 		lds r20,ocr1al
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable3
 		sts ocr1ah, xh
@@ -631,7 +631,7 @@ phase4next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase4	;c'est égale on passe a la phase suivante
+		breq nextphase4	;c'est Ã©gale on passe a la phase suivante
 		lds temp, sign		;si = 1 = positif donc trop rapide
 		cpi temp, $0	
 		breq Frequence_trop_basse4
@@ -639,7 +639,7 @@ phase4next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		lds temp, QuickOrClassic
 		cpi temp, 1
 		brne classic_3
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		;je regarde si je corrige un peu ou beaucoup
 		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
 		cpi temp2, 1
@@ -654,7 +654,7 @@ classic_3:
 Cavautlapeine4a:
 		ldi temp, Phase4QuickLargeStep		;on charge le pas. 200s = 7 1/(200x152.59uhz) = 32.76
 		mul temp2, temp		;temp2 est la frequence. reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul4a:
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
@@ -663,7 +663,7 @@ calcul4a:
 		sub xl, temp
 		sbc	xh,temp2
 		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable4
 		sts ocr1ah, xh		
 		sts ocr1al, xl
@@ -702,7 +702,7 @@ classic_4:
 Cavautlapeine4b:
 		ldi temp, Phase4QuickLargeStep		;on charge le pas. 200s = 7 1/(200x152.59uhz) = 32.76 
 		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul4b:
 		lds xh, ocr1ah
 		lds xl,ocr1al
@@ -710,7 +710,7 @@ calcul4b:
 		lds r20,ocr1al
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable4
 		sts ocr1ah, xh
@@ -740,12 +740,12 @@ phase5:
 		rjmp Retour_en_mode_interrupt
 phase5next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 
-		call eepromwritebytes	;ecris la frequence_1 trouvé dans eeprom commence a l'adresse 2 et incremente pour le prochain tour.
+		call eepromwritebytes	;ecris la frequence_1 trouvÃ© dans eeprom commence a l'adresse 2 et incremente pour le prochain tour.
 		;;rendu a la phase 5 je garde tous les resultata pour analyse dans eeprom.
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase5	;c'est égale on passe a la phase suivante
+		breq nextphase5	;c'est Ã©gale on passe a la phase suivante
 		lds temp, sign		;si = 1 = positif donc trop rapide
 		cpi temp, $0	
 		breq Frequence_trop_basse5
@@ -755,7 +755,7 @@ Frequence_trop_haute5:
 		lds temp, QuickOrClassic
 		cpi temp, 1
 		brne classic_5
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		;je regarde si je corrige un peu ou beaucoup
 		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
 		cpi temp2, 1
@@ -771,7 +771,7 @@ Cavautlapeine5a:
 		ldi temp, Phase5QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
 		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
 		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul5a:
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
@@ -780,7 +780,7 @@ calcul5a:
 		sub xl, temp
 		sbc	xh,temp2
 		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable5
 		sts ocr1ah, xh		
 		sts ocr1al, xl
@@ -821,7 +821,7 @@ Cavautlapeine5b:
 		ldi temp, Phase5QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
 		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
 		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16		;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16		;je garde cette rÃ©ponse dans r17:r16
 calcul5b:
 		lds xh, ocr1ah
 		lds xl,ocr1al
@@ -829,7 +829,7 @@ calcul5b:
 		lds r20,ocr1al
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable5
 		sts ocr1ah, xh
@@ -859,10 +859,10 @@ runmode:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 
 runmodenext:
 		call eepromwritebytes	;track tous les valeur dans eeprom adresse 02 to ff et tourne en boucle
-		call compare		;Le resultat est dans frequence et on compare avec la frequence de phase (reference 10E9 ici). Difference en cycle est dans difference_1 à 5
+		call compare		;Le resultat est dans frequence et on compare avec la frequence de phase (reference 10E9 ici). Difference en cycle est dans difference_1 Ã  5
 		lds temp, difference_1
 		cpi temp, $0
-		breq nextphase7_	;c'est égale on passe a la phase suivante
+		breq nextphase7_	;c'est Ã©gale on passe a la phase suivante
 
 		call compare2			;compare si la difference est torp grande et met le flag a 1 si oui.
 		lds temp,toolargeflag	;sense si la difference est trop grande
@@ -899,12 +899,12 @@ cestgood:
 		cpi temp, 1
 		brne classic_7
 Frequence_trop_haute7:
-		;ici il faut diminuer car le résultat est positif
+		;ici il faut diminuer car le rÃ©sultat est positif
 		;je regarde si je corrige un peu ou beaucoup
 		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
 		cpi temp2, 1
-		brne Cavautlapeine7a ;je l'ai deactivé. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
-		ldi temp,Phase6QuickLittleStep_L	;je met 3. ca prend 8 pour plus ou moins 1 hz. a 1 c'est trop lent et la fréquence change plus vite que la correction. A 3 c'Est mieux
+		brne Cavautlapeine7a ;je l'ai deactivÃ©. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
+		ldi temp,Phase6QuickLittleStep_L	;je met 3. ca prend 8 pour plus ou moins 1 hz. a 1 c'est trop lent et la frÃ©quence change plus vite que la correction. A 3 c'Est mieux
 		ldi temp2,Phase6QuickLittleStep_H	;a 2 aussi c'etait pas si mal; Finalement j'ai mis 1.
 		rjmp calcul7a
 classic_7:
@@ -915,7 +915,7 @@ Cavautlapeine7a:
 		ldi temp, Phase6QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
 		;ce qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
 		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16
 calcul7a:
 		lds xh, ocr1ah		;c'est donc positif on descent
 		lds xl,ocr1al
@@ -924,7 +924,7 @@ calcul7a:
 		sub xl, temp
 		sbc	xh,temp2
 		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncÃ©.
 		brsh unreachable7
 		sts ocr1ah, xh		
 		sts ocr1al, xl
@@ -937,7 +937,7 @@ nextphase7:
 		call RunLedOn
 		call afficherunmode
 		call affichesatellite2
-		lds r19, ocr1ah		;10,000,000.000 vient d'etre compté ici on conserve la valeur trouvé dans l'eeprom.
+		lds r19, ocr1ah		;10,000,000.000 vient d'etre comptÃ© ici on conserve la valeur trouvÃ© dans l'eeprom.
 		lds r18,ocr1al
 		sts pwmphase6h, r19	
 		sts pwmphase6l, r18
@@ -958,7 +958,7 @@ Frequence_trop_basse7:
 		sub temp2, temp
 		inc temp2			;temp2 a maintenant le nombre de hz manquant
 		cpi temp2, 1
-		brne Cavautlapeine7b ;je l'ai deactivé. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
+		brne Cavautlapeine7b ;je l'ai deactivÃ©. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
 		ldi temp ,Phase6QuickLittleStep_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
 		ldi temp2 ,Phase6QuickLittleStep_H		;Add high byte with carry
 		rjmp calcul7b
@@ -970,7 +970,7 @@ Cavautlapeine7b:
 		ldi temp, Phase6QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
 		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
 		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16		;je garde cette réponse dans r17:r16
+		movw temp, r0			;je garde cette rÃ©ponse dans r17:r16		;je garde cette rÃ©ponse dans r17:r16
 calcul7b:
 		lds xh, ocr1ah
 		lds xl,ocr1al
@@ -978,7 +978,7 @@ calcul7b:
 		lds r20,ocr1al
 		add xl, temp
 		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a dÃ©foncÃ©... unreachable
 		cpc xh, r21
 		brlo unreachable7_1
 		sts ocr1ah, xh
@@ -1011,7 +1011,7 @@ Halted: rjmp Halted
 ;*************
 CheckRunLed:
 		lds temp2, difference_1	;ramasse la frequence obtenu
-		cpi temp2, Hit+1			;compare avec marge d'erreur accepté. J'ajoute +1 pour coriger.
+		cpi temp2, Hit+1			;compare avec marge d'erreur acceptÃ©. J'ajoute +1 pour coriger.
 		brlo met_a_on
 		call RunLedOff
 		rjmp No_
@@ -1025,7 +1025,7 @@ No_:
 ;*********************************************************   Push button   ***************************************************************
 ;*****************************************************************************************************************************************
 ;*****************************************************************************************************************************************
-pushbutton:		;dans le mode warming up 15 minute. Push button génere aussi un interruption. On regarde ici si elle arrive derant le 15 minutes
+pushbutton:		;dans le mode warming up 15 minute. Push button gÃ©nere aussi un interruption. On regarde ici si elle arrive derant le 15 minutes
 		push temp
 		load temp, sreg	
 		push temp
@@ -1038,20 +1038,20 @@ pushbutton:		;dans le mode warming up 15 minute. Push button génere aussi un int
 		sts wait_flag,temp
 ;tempo pour antirebond, code ajouter pour corriger probleme d'afficher l'heure a la place de bypasser le wait.
 dwdw1:	call tempo10ms
-dwdw:	sbis pind, pd3	;Bouton enfoncé. 0v Attends que ca remonte a 5v.
+dwdw:	sbis pind, pd3	;Bouton enfoncÃ©. 0v Attends que ca remonte a 5v.
 		rjmp dwdw
 		call tempo10ms
-		sbis pind, pd3	;double check, devrait etre remonté a 5v sinon 
+		sbis pind, pd3	;double check, devrait etre remontÃ© a 5v sinon 
 		rjmp dwdw1
 		call tempo300ms
-		ldi temp, 0b00000010	;remove int1 flag si jamais ca rebondi et passé au travers de l'antirebond
+		ldi temp, 0b00000010	;remove int1 flag si jamais ca rebondi et passÃ© au travers de l'antirebond
 		store eifr, temp
 		pop temp
 		store sreg, temp
 		pop temp
 		reti
 pasca:
-;ici on veut afficher l'heure. On sait que le bouton a été appuyer dans le mode count. On doit donc tout rénitialiser car ici on bypass le reti. C'est pas évident de fonctionner ainsi
+;ici on veut afficher l'heure. On sait que le bouton a Ã©tÃ© appuyer dans le mode count. On doit donc tout rÃ©nitialiser car ici on bypass le reti. C'est pas Ã©vident de fonctionner ainsi
 ;mais j'ai pas le choix.
 		wdr
 		clr temp
@@ -1065,10 +1065,10 @@ pasca:
 			
 		call seconde_tempo
 		wdr	
-;on doit tout rénitialiser car on revient ici par interruption push button quand on etait en train de compter. Donc on remet a 0 et on
-;retourne à la phase ou nous etions
+;on doit tout rÃ©nitialiser car on revient ici par interruption push button quand on etait en train de compter. Donc on remet a 0 et on
+;retourne Ã  la phase ou nous etions
 		sbi eifr, 1
-		ldi temp, 0b00000010	;remove int1 flag pour etre encore plus sur. (je l'ai déja vu 2 fois de fille comme l'interrupt se faisait 2 fois.
+		ldi temp, 0b00000010	;remove int1 flag pour etre encore plus sur. (je l'ai dÃ©ja vu 2 fois de fille comme l'interrupt se faisait 2 fois.
 		store eifr, temp
 		ldi temp, (0<<CS00)	;stop counter 8 bit
 		out TCCR0B,temp
@@ -1078,7 +1078,7 @@ pasca:
 		sts compteh, temp
 		call clrallregister
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		ldi temp,0b00000001
@@ -1096,19 +1096,19 @@ TIM0_OVF:	;viens ici a APRES chaque 256 clock a l'aide le int overflow.
 ;Je n'ai aucun moyen de corriger ca. Par chance, Vu que je roule a 10 mhz pile, si le dernier pulse n'arrive pas dedans, il n'arrivera donc jamais dedans.
 ;Et si il arrive toujours dedans, il va etre toujours dedans. Dans ce cas je changerai ou ajouterai une boucle de temps au depart.
 ;Apres test le dernier pulse arrive a 00 en phase 2,4,5,6 et a 80 a 1 et 2.
-;Reponse. Il vient ici avant le dernier latch car le compteur est parti a 7,8 tic en retard, Donc il vient ici 7-8 tic avant la fin. Quand le compteur est arreté dans l'interruption latch. Il est rendu a 0 a ce moment.
-;En aucun cas l'interruption latch peut arriver en même temps que un timer overflow pour cette raison.
+;Reponse. Il vient ici avant le dernier latch car le compteur est parti a 7,8 tic en retard, Donc il vient ici 7-8 tic avant la fin. Quand le compteur est arretÃ© dans l'interruption latch. Il est rendu a 0 a ce moment.
+;En aucun cas l'interruption latch peut arriver en mÃªme temps que un timer overflow pour cette raison.
 		ldi temp, $ff
 		cp xl, temp			;tcnt0 monte a FF et retourne a 0. Un intterruption survien et on arrive ici. 
 		cpc xh, temp		;On incremente x et regarde si le registre x est rendu plein, compare a $FFFF
-		breq incy			;x est incrementé de 1 a chaque 256 clock. quand x = FFFF on monte y de 1 (ca prend un clk et ffff monte a 10000) et on remet x a 0.
+		breq incy			;x est incrementÃ© de 1 a chaque 256 clock. quand x = FFFF on monte y de 1 (ca prend un clk et ffff monte a 10000) et on remet x a 0.
 		adiw xh:xl, $01		;monte de 1 le registre x de 16 bit: X vaut (FFFF+1) x $100 = $10,00,00 1000000 (6 zero)
 
 
 ;Il faut un moyen de savoir si il manque un pulse ou non. On vient ici a chaque 256 clk. Donc chaque 25.6us. 1s/256us = 39062.5 fois par seconde (0x9896)
 ;Donc si le compteur 16 bits Overflow c'est que forcement c'est trop long car pour 2 seconde = 78125 qui est superieur a 65536.
 ;On laisse le compteur monter et si overflow = trop long = pulse missing et je l'envoie direct dans watchdog_overflow. Je voulais faire une boucle sans fin
-;et laisser le watchdog embarquer. Mais apres test le watchdog embarque pas ici. Surement parque nous somme déja dans un interrupt.
+;et laisser le watchdog embarquer. Mais apres test le watchdog embarque pas ici. Surement parque nous somme dÃ©ja dans un interrupt.
 
 		push xh
 		push xl
@@ -1137,18 +1137,18 @@ incy:						;y vaux (1,00,00,00)...
 ;*****************************************************************************************************************************************
 ;*****************************************************************************************************************************************
 Latch:
-; Un pulse arrive chaque seconde. On calcul le nombre de hertz a l'aide du compteur 8bit en incrémentant le registre x et y.
+; Un pulse arrive chaque seconde. On calcul le nombre de hertz a l'aide du compteur 8bit en incrÃ©mentant le registre x et y.
 ; meme nombre de clock (operations) pour partir ou arreter le compteur pour que ca balance.
 ; un probleme peut survenir. Le compteur tcnt0 compte sans arret.
-; si l'interruption arrive quand tcnt0 est a 254... il se créé un overflow pendant l'interruption. Par contre le flag reste en suspand et n'est pas pris en compte
+; si l'interruption arrive quand tcnt0 est a 254... il se crÃ©Ã© un overflow pendant l'interruption. Par contre le flag reste en suspand et n'est pas pris en compte
 ; tout de suite car les int sont disable durant le traitement de celle ci.
-; le comprteur est donc faussé car tcnt0 est additionné au total mais maintenant il vaut seulement 0 ou 1 car il a recommencé.
-; par contre l'interruption en mémoire est executé aussitot sorti de cette interruption et les 256 clock de perdu sont additionné au prochain.
+; le comprteur est donc faussÃ© car tcnt0 est additionnÃ© au total mais maintenant il vaut seulement 0 ou 1 car il a recommencÃ©.
+; par contre l'interruption en mÃ©moire est executÃ© aussitot sorti de cette interruption et les 256 clock de perdu sont additionnÃ© au prochain.
 ;***IMPORTANT** finalement l'overflow se gere comme un neuvieme bit qui vaut (256) $100. Simplement ajouter le tcnt0 + $100 quand le tov0 est a 1
 ; jai donc inclus du code pour gerer le bit overflow quand cela se produit
-;XX*** important: J'ai lu apres dans le datasheet: tov0 peut etre considéré comme un 9iem bit!!! Plus facile de penser comme cela. il passe a 1 en meme temps qu'il passe tcnt0 a 0.
+;XX*** important: J'ai lu apres dans le datasheet: tov0 peut etre considÃ©rÃ© comme un 9iem bit!!! Plus facile de penser comme cela. il passe a 1 en meme temps qu'il passe tcnt0 a 0.
 
-		lds r16, compteh ;compte est incrementé a chaque seconde
+		lds r16, compteh ;compte est incrementÃ© a chaque seconde
 		lds r17, comptel
 		lds r18, echantillon_timeh	;on echantillone combien de temps ???? C'est ici
 		lds r19, echantillon_timel
@@ -1165,7 +1165,7 @@ Latch:
 
 
 	;peux ajouter du code ici sans changer le resultat du count mais ne doit pas depasser 256 clock
-	;pourquoi... parce que ici les interruption sont deactivé. Si ca prend plus que 256 clock le compteur tcnt0 va faire un ou plusieur overflow mais ne sera
+	;pourquoi... parce que ici les interruption sont deactivÃ©. Si ca prend plus que 256 clock le compteur tcnt0 va faire un ou plusieur overflow mais ne sera
 	;pas pris en compte car il y a un buffer de seulement 1 interruption.
 
 ;toggle le led counter
@@ -1193,8 +1193,8 @@ off:
 		cli		;arrete tous les futurs interruptions
 		call CounterLedOff
 
-;ici on doit gerer la valeur de x et y qui s'est accumulé dans l'echantionnage
-;(xh:xl x $100) + (yh:yl x $1000000) + le reste du compteur tcnt0 + overflow (256) si actif = nombre de clock écoulé total.
+;ici on doit gerer la valeur de x et y qui s'est accumulÃ© dans l'echantionnage
+;(xh:xl x $100) + (yh:yl x $1000000) + le reste du compteur tcnt0 + overflow (256) si actif = nombre de clock Ã©coulÃ© total.
 
 rere:
 ;r21:r20 x r23:r22 = r5:r4:r3:r2
@@ -1245,7 +1245,7 @@ rere:
 ;test overflow bit
 		sbis TIFR0, tov0	;skip if bit is set (bit overflow)  Si il y a eu overflow entre l'interrup et l'arret on ajoute 256
 		rjmp fiou
-		ldi temp, (1<<TOV0)	;annule l'overflow pending et la future interruption par le fait meme. Faire a la main car reti est bypassé.
+		ldi temp, (1<<TOV0)	;annule l'overflow pending et la future interruption par le fait meme. Faire a la main car reti est bypassÃ©.
 		out tifr0, temp
 		clr r16
 		ldi r17,$01		;additionne 256
@@ -1274,7 +1274,7 @@ fiou:
 		lds r18, frequence_3
 		lds r17, frequence_2
 		lds r16, frequence_1
-		call hex2bcdyt		;conversion bcd	;fonctionne bien pas de bug testé avec afficheur ca concorde.
+		call hex2bcdyt		;conversion bcd	;fonctionne bien pas de bug testÃ© avec afficheur ca concorde.
 		sts frebcd1, r21
 		sts frebcd2, r22
 		sts frebcd3, r23
@@ -1290,7 +1290,7 @@ fiou:
 		call posi2
 		lds temp, calibrationphase	;quand on est a 6 on affiche la frequence et non le compte
 		cpi temp, $5
-		brsh displaymhz ;­>=
+		brsh displaymhz ;Â­>=
 
 		lds temp, frebcd5	;jusque phase 1 a 5 on affiche seulement 5 bytes
 		call affichenombre
@@ -1368,12 +1368,12 @@ onnettoie:
 		;ldi temp, (1<<TOIE0)	;active interupt overflow
 		;sts timsk0, temp
 dispatch:
-;maintenat qu'on a la frequence. déterminons ou nous devons aller pour le traitement de la calibration. Quel phase sonne nous rendu.
+;maintenat qu'on a la frequence. dÃ©terminons ou nous devons aller pour le traitement de la calibration. Quel phase sonne nous rendu.
 		lds temp, calibrationphase
 		cpi temp,01
 		brne nono
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp phase1next
@@ -1381,7 +1381,7 @@ nono:
 		cpi temp,02
 		brne nono1
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp phase2next
@@ -1389,7 +1389,7 @@ nono1:
 		cpi temp,03
 		brne nono2
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp phase3next
@@ -1397,7 +1397,7 @@ nono2:
 		cpi temp,04
 		brne nono3
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp phase4next
@@ -1405,7 +1405,7 @@ nono3:
 		cpi temp,05
 		brne nono5
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp phase5next
@@ -1414,7 +1414,7 @@ nono5:
 		cpi temp,06
 		brne nono6
 		ldi	temp,low(RAMEND)
-		out	SPL,temp			; Initialisation de la pile à   
+		out	SPL,temp			; Initialisation de la pile Ã    
 		ldi	temp,high(RAMEND)	; l'adresse haute de la SRAM
 		out	SPH,temp
 		rjmp runmodenext
@@ -1463,11 +1463,11 @@ debutcalibration:
 		ldi xh, $03
 		ldi xl, $84	;metre 15x60 ic pour la version final 900 = $384
 		ldi temp, 01
-		sts affichesatelliteflag, temp	;flag qui permet au nombre de satellite d'etre affiché.
+		sts affichesatelliteflag, temp	;flag qui permet au nombre de satellite d'etre affichÃ©.
 		wdr
-		ldi temp, 0b00000011	;enleve les interrupt pending avant l'activation des interrupt. Si push button a ete poussé trop top
+		ldi temp, 0b00000011	;enleve les interrupt pending avant l'activation des interrupt. Si push button a ete poussÃ© trop top
 		store eifr,temp
-		sei			;int1 seulement est activé ici pour permettre au bouton de bypasser le temps de réchaufement de l'oscillateur et serial interrupt active ausi.
+		sei			;int1 seulement est activÃ© ici pour permettre au bouton de bypasser le temps de rÃ©chaufement de l'oscillateur et serial interrupt active ausi.
 		call wait	;att end le nombre de seconde qui est dans x sous routine est dans math
 		clr temp
 		sts affichesatelliteflag, temp	;clear le flag d'affichage des satellite
@@ -1515,7 +1515,7 @@ ghgh:
 		call videecran
 		call posi1
 		call nextline
-		ldi r31,high(data18*2)  	;Ici on va chercher l'addresse momoire ou se retrouve le data à afficher.
+		ldi r31,high(data18*2)  	;Ici on va chercher l'addresse momoire ou se retrouve le data Ã  afficher.
 		ldi r30,low(data18*2)		;no pulse
 		call message
 		call posi2
@@ -1526,7 +1526,7 @@ ghgh:
 		call nextline
 jsjs:
 
-		ldi temp, (1<<TOV0)	;annule l'overflow pending et la future interruption par le fait meme. Faire a la main car reti est bypassé.
+		ldi temp, (1<<TOV0)	;annule l'overflow pending et la future interruption par le fait meme. Faire a la main car reti est bypassÃ©.
 		out tifr0, temp
 		ldi temp, (0<<CS00)	;stop counter 8 bit
 		out TCCR0B,temp
@@ -1536,16 +1536,16 @@ jsjs:
 		sts comptel, temp	;initialise le flag compte. Il repart a 0
 		sts compteh, temp
 
-;ici on dois attendre la detection d'un gps pulse. donc on loop ici et quand un pulse est detecté, on affiche la bonne phase et on repart la calibration
+;ici on dois attendre la detection d'un gps pulse. donc on loop ici et quand un pulse est detectÃ©, on affiche la bonne phase et on repart la calibration
 
 toujoursrien:
-		wdr				;empeche un autre interrupt watchdog de survenir. Sinon le flag interrupt watchdog se met a 1 et un autre interrupt watchdog est excuté aussitot sei embarqué
+		wdr				;empeche un autre interrupt watchdog de survenir. Sinon le flag interrupt watchdog se met a 1 et un autre interrupt watchdog est excutÃ© aussitot sei embarquÃ©
 		sbic pind, pd2
 		rjmp toujoursrien
 
 etondispatchencore:
 		call videecran
-;pulse detecté on affiche la bonne phase ou l'on se trouve avant de lancer le compteur.
+;pulse detectÃ© on affiche la bonne phase ou l'on se trouve avant de lancer le compteur.
 		lds temp, calibrationphase
 		cpi temp,$01
 		brne zx
@@ -1589,13 +1589,13 @@ WDT_off:
 Retour_en_mode_interrupt:
 
 		ldi temp, (1<<int1)|(0<<int0)	;deactive int0 interrup gps pulse
-		out EIMSK,temp					;deactive int0 dans External Interrupt Mask Register – EIMSK
+		out EIMSK,temp					;deactive int0 dans External Interrupt Mask Register â€“ EIMSK
 		wdr
 		in temp, MCUSR			;enleve le watchdog interrupt pending avant le sei.
 		andi temp, ~(1<<WDRF)
 		out MCUSR, r16	
 		sei ;active les interrupt (watchdog seument pour senser le pulse)
-		;boucle de temps pour laisser le voltage du pwm se stabilisé (condensabeur chargé) peut etre pas nécessaire mais pour 2 secondes rien ne presse
+		;boucle de temps pour laisser le voltage du pwm se stabilisÃ© (condensabeur chargÃ©) peut etre pas nÃ©cessaire mais pour 2 secondes rien ne presse
 		call seconde_tempo
 		wdr
 		call seconde_tempo
@@ -1613,6 +1613,6 @@ pasencorepret2:
 		ldi temp, 0b00000011	;enleve les interrupt pending avant l'activation des interrupt
 		store eifr,temp
 		ldi temp, (1<<int1)|(1<<int0)	;active int0 interrup gps pulse
-		out EIMSK,temp					;active int0 dans External Interrupt Mask Register – EIMSK
+		out EIMSK,temp					;active int0 dans External Interrupt Mask Register â€“ EIMSK
 		wdr	
 .include "NopLoop.asm"
