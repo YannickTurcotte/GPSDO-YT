@@ -48,3 +48,14 @@ Remove the averaging algorithm. After 20 good know values, an average was made a
 
 If a miscount of + or - .050 happen. uC will reload the last good config from eeprom and do a recount first. If result isn't fix, uC return to 1 second gate to do a full recalibration.
 -Now the count LED is only flashing at 0.5HZ. The LED turn on IRQ0 and turn off on next IRQ0. IRQ0 is the 1 second pulse. This LED was flashing too quick and was producing harmonic.
+
+1.60
+-Factorised the 8 correction blocks (phase 1 to 6, too high / too low) into one single routine (correction:) with a step table in flash (PhaseTable, 8 bytes per phase). Same behaviour as before: same steps, same unreachable detection, same run LED logic. Saved 682 bytes of flash. Phase 1-2 always use the fixed jump (like before), quick mode still applies to phase 3-6 only.
+-Eeprom protection: eepromw now reads address 0-1 first and only writes when the value changed. Before, every 10,000,000.000 hit in run mode was rewriting the same 2 cells (~31,000 writes/year = 100k endurance reached in ~3 years running 24/7).
+-Version displayed: 1.60q / 1.60c.
+
+1.61
+-Fixed false "hit": the hit test was only checking difference_1 (the LSB). An error of exactly 256, 512... cycles (LSB = 0) was seen as a perfect 10,000,000.000 and, in run mode, the bad config was saved to eeprom. Now a new routine (testhit) checks difference_1 to difference_5 at all 6 call sites.
+-Fixed quick mode error truncation: the error magnitude was taken from frequence_1 (error mod 256). With an error of 256 cycles or more the correction jump was wrong (and a jump of exactly zero if the error was a multiple of 256, which could deadlock phase 4 after a restart with a stale eeprom config). Now the error is 16 bits (difference_2:difference_1) and the step = error x QuickLargeStep is computed in 16 bits. If the required step exceeds 65535 (bigger than the whole pwm range) it goes to Unreachable, which is the correct answer.
+-CheckRunLed also checks difference_2 now, so the RUN/Hit led can't turn on for an error of 256+ cycles.
+-Version displayed: 1.61q / 1.61c.

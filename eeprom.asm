@@ -3,6 +3,35 @@
 ; sous programme d'écriture dans l'eeprom à l'adresse $00
 ;ecris ce qui se retrouve dans pwmphase6h, 6l
 eepromw:
+;V1.60: lit d'abord l'eeprom (adresses 0-1) et n'ecrit que si la valeur a change.
+;Sans cette protection, chaque hit en mode run reecrit les memes 2 cellules a chaque porte
+;de 1000s (~31000 ecritures/an, endurance de 100k atteinte en environ 3 ans 24/7).
+ecr00:	
+		sbic EECR,EEPE			; vérifie si EEPE=0 
+		rjmp ecr00
+		clr temp2
+		out EEARL, temp2		;lire adresse 0
+		out EEARH, temp2
+		sbi EECR, EERE
+ecr05:
+		sbic EECR, EERE			; attendre que EERE=0
+		rjmp ecr05
+		in temp, EEDR
+		lds temp2, pwmphase6h
+		cp temp, temp2
+		brne ecr01				;different = on ecrit
+		ldi temp2, $01
+		out EEARL, temp2		;lire adresse 1
+		sbi EECR, EERE
+ecr06:
+		sbic EECR, EERE			; attendre que EERE=0
+		rjmp ecr06
+		in temp, EEDR
+		lds temp2, pwmphase6l
+		cp temp, temp2
+		brne ecr01				;different = on ecrit
+		clr temp2				;identique = rien a ecrire, on protege l'eeprom
+		ret
 ecr01:	
 		sbic EECR,EEPE			; vérifie si EEWE=0 
 		rjmp ecr01

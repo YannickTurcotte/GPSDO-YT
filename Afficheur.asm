@@ -1,9 +1,9 @@
 ;.dseg	;data segment de 512 sur atmega48
 data1:
-	.db "1000s gate 1.59q" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.61q" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data2:	
-	.db "1000s gate 1.59c" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.61c" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data3:
 	.db "wait 15 min     " ;

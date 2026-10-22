@@ -213,7 +213,7 @@ QuickOrClassicEnd:
 		lds temp, QuickOrClassic		;read flag previously set
 		cpi temp, 1
 		brne classicmode1
-		ldi r31,high(data7*2)  		;"GPSDO YT 1.58q "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
+		ldi r31,high(data7*2)  		;"    GPSDO YT    " (version affichee via data1/data2)    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
 		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait
 		call message
 		call nextline
@@ -226,7 +226,7 @@ QuickOrClassicEnd:
 		rjmp classicmode2						;du registre R31 et R30. Z est en fait 16 bits de long.
 classicmode1:
 ;Displaying Version classic mode
-		ldi r31,high(data7*2)  		;"GPSDO YT 1.58c "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
+		ldi r31,high(data7*2)  		;"    GPSDO YT    " (version affichee via data2)    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
 		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait
 		call message				;dans message, on affiche ce que pointe Z "ceci est un test"
 		call nextline
@@ -383,53 +383,16 @@ phase1:
 		call affichephase1	;affiche la phase et va chercher la frequence
 		call affichesatellite2
 		rjmp Retour_en_mode_interrupt
-phase1next:	
+phase1next:
 		;revien ici avec valeur de frequence pour une seconde
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase	;c'est égale on passe a la phase suivante
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse
-		;Frequence_trop_haute:
-		;ici il faut diminuer car le résultat est positif
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		subi xl, Phase1Jump_L	;Subtract low bytes
-		sbci xh, Phase1Jump_H		;Add high byte with carry
-		cp xl, r20		;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21		;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable1
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call affichephase1	;Je dois réafficher car si le nombre de sattelite change, ca doit être refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-unreachable1: rjmp unreachable				
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60)
 nextphase:
 		call awesome  ;posi fin + message
 		call tempo5s
 		rjmp phase2
-Frequence_trop_basse:		;faut augmenteraugement pwm
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		ldi temp ,Phase1Jump_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase1Jump_H		;Add high byte with carry
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable1
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call affichephase1		;P.2 10 sec
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
 
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
@@ -453,52 +416,13 @@ Phase2:
 
 phase2next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase2	;c'est égale on passe a la phase suivante
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse2
-		;Frequence_trop_haute:
-		;ici il faut diminuer car le résultat est positif
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		subi xl,Phase2Jump_L
-		sbci xh,Phase2Jump_H
-		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable2
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call affichephase2		;P.2 10 sec
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-
-unreachable2: rjmp unreachable	
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60)
 nextphase2:
 		call awesome
 		call tempo5s
 		rjmp phase3
-Frequence_trop_basse2:	
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		ldi temp ,Phase2Jump_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase2Jump_H		;Add high byte with carry
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable2
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call affichephase2		;P.2 10 sec
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-
 
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
@@ -521,96 +445,20 @@ phase3:
 		rjmp Retour_en_mode_interrupt
 
 phase3next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
-
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase3	;c'est égale on passe a la phase suivante
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse3
-;Frequence_trop_haute:
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_1
-		;ici il faut diminuer car le résultat est positif
-		;je regarde si je corrige un peu ou beaucoup
-		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
-		cpi temp2, 1
-		brne Cavautlapeine3a
-		ldi temp,Phase3QuickLittleStep_L
-		ldi temp2,Phase3QuickLittleStep_H
-		rjmp calcul3a
-classic_1:
-		ldi temp,Phase3Jump_L
-		ldi temp2,Phase3Jump_H
-		rjmp calcul3a
-Cavautlapeine3a:
-		ldi temp, Phase3QuickLargeStep		;on charge le pas. 60s = 7 1/(60x152.59uhz) = 109.22
-		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul3a:
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		sub xl, temp
-		sbc	xh,temp2
-		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable3
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call affichephase3					;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-unreachable3: rjmp unreachable	
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60)
 nextphase3:
 		call awesome
 		call tempo5s
 		lds r19, ocr1ah	;kept in eeprom
 		lds r18,ocr1al
-		sts pwmphase6h, r19	
+		sts pwmphase6h, r19
 		sts pwmphase6l, r18
 		call eepromw
 		rjmp phase4
-Frequence_trop_basse3:
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_2
 
-		lds temp, frequence_1
-		ldi temp2, $ff		;ff - frequence + 1 est ce qui manque pour arriver a 0 pile
-		sub temp2, temp
-		inc temp2			;temp2 a maintenant le nombre de hz manquant
-		cpi temp2, 1
-		brne Cavautlapeine3b
-		ldi temp ,Phase3QuickLittleStep_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase3QuickLittleStep_H		;Add high byte with carry
-		rjmp calcul3b
-classic_2:
-		ldi temp,Phase3Jump_L
-		ldi temp2,Phase3Jump_H
-		rjmp calcul3b
-Cavautlapeine3b:
-		ldi temp, Phase3QuickLargeStep		;on charge le pas. 60s = 7 1/(60x152.59uhz) = 109.22
-		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul3b:
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable3
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call affichephase3					;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
 ;***************************************************        Phase 4      ***********************************************************
@@ -633,95 +481,18 @@ phase4:
 
 phase4next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase4	;c'est égale on passe a la phase suivante
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse4
-;Frequence_trop_haute:
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_3
-		;ici il faut diminuer car le résultat est positif
-		;je regarde si je corrige un peu ou beaucoup
-		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
-		cpi temp2, 1
-		brne Cavautlapeine4a
-		ldi temp,Phase4QuickLittleStep_L
-		ldi temp2,Phase4QuickLittleStep_H
-		rjmp calcul4a
-classic_3:
-		ldi temp,Phase4Jump_L
-		ldi temp2,Phase4Jump_H
-		rjmp calcul4a
-Cavautlapeine4a:
-		ldi temp, Phase4QuickLargeStep		;on charge le pas. 200s = 7 1/(200x152.59uhz) = 32.76
-		mul temp2, temp		;temp2 est la frequence. reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul4a:
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		sub xl, temp
-		sbc	xh,temp2
-		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable4
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call affichephase4						;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-unreachable4: rjmp unreachable	
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60)
 nextphase4:
 		call awesome
 		call tempo5s
 		lds r19, ocr1ah	;kept in eeprom
 		lds r18,ocr1al
-		sts pwmphase6h, r19	
+		sts pwmphase6h, r19
 		sts pwmphase6l, r18
 		call eepromw
 		rjmp phase5
-
-Frequence_trop_basse4:
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_4
-
-		lds temp, frequence_1
-		ldi temp2, $ff		;ff - frequence + 1 est ce qui manque pour arriver a 0 pile
-		sub temp2, temp
-		inc temp2			;temp2 a maintenant le nombre de hz manquant
-		cpi temp2, 1
-		brne Cavautlapeine4b
-		ldi temp ,Phase4QuickLittleStep_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase4QuickLittleStep_H		;Add high byte with carry
-		rjmp calcul4b
-classic_4:
-		ldi temp,Phase4Jump_L
-		ldi temp2,Phase4Jump_H
-		rjmp calcul4b
-Cavautlapeine4b:
-		ldi temp, Phase4QuickLargeStep		;on charge le pas. 200s = 7 1/(200x152.59uhz) = 32.76 
-		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul4b:
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable4
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call affichephase4						;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
 
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
@@ -743,105 +514,21 @@ phase5:
 		sts echantillon_timeh,temp
 		rjmp Retour_en_mode_interrupt
 phase5next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
-
 		call eepromwritebytes	;ecris la frequence_1 trouvé dans eeprom commence a l'adresse 3 et incremente pour le prochain tour.
-		;;rendu a la phase 5 je garde tous les resultata pour analyse dans eeprom.
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase5	;c'est égale on passe a la phase suivante
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse5
-		call checkrunled		;compare marge d'erreur et allume ou ferme le led run si acceptable
-Frequence_trop_haute5:
-		;Frequence_trop_haute:
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_5
-		;ici il faut diminuer car le résultat est positif
-		;je regarde si je corrige un peu ou beaucoup
-		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
-		cpi temp2, 1
-		brne Cavautlapeine5a
-		ldi temp,Phase5QuickLittleStep_L
-		ldi temp2,Phase5QuickLittleStep_H
-		rjmp calcul5a		;PHASE 5 C'EST +-3. 8XFREQUENCE EN QUICK 
-classic_5:
-		ldi temp,Phase5Jump_L
-		ldi temp2,Phase5Jump_H
-		rjmp calcul5a
-Cavautlapeine5a:
-		ldi temp, Phase5QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
-		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
-		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul5a:
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		sub xl, temp
-		sbc	xh,temp2
-		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable5
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call affichephase5			;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-unreachable5: rjmp unreachable	
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60, checkrunled inclus pour cette phase)
 nextphase5:
 		call awesome
 		call tempo5s
 		lds r19, ocr1ah	;kept in eeprom
 		lds r18,ocr1al
-		sts pwmphase6h, r19	
+		sts pwmphase6h, r19
 		sts pwmphase6l, r18
 		call eepromw
 		call RunLedOn ;allume le led RUN
 		rjmp runmode
-Frequence_trop_basse5:
-		;call checkrunledNegatif		;compare marge d'erreur et allume ou ferme le led run si acceptable
-		call checkrunled
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_6
-		lds temp, frequence_1
-		ldi temp2, $ff		;ff - frequence + 1 est ce qui manque pour arriver a 0 pile
-		sub temp2, temp
-		inc temp2			;temp2 a maintenant le nombre de hz manquant
-		cpi temp2, 1
-		brne Cavautlapeine5b
-		ldi temp ,Phase5QuickLittleStep_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase5QuickLittleStep_H		;Add high byte with carry
-		rjmp calcul5b
-classic_6:
-		ldi temp,Phase5Jump_L
-		ldi temp2,Phase5Jump_H
-		rjmp calcul5b
-Cavautlapeine5b:
-		ldi temp, Phase5QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
-		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
-		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16		;je garde cette réponse dans r17:r16
-calcul5b:
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable5
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call affichephase5			;refresh
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-
 
 ;***********************************************************************************************************************************
 ;***********************************************************************************************************************************
@@ -864,8 +551,7 @@ runmode:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 runmodenext:
 		call eepromwritebytes	;track tous les valeur dans eeprom adresse 03 to ff et tourne en boucle
 		call compare		;Le resultat est dans frequence et on compare avec la frequence de phase (reference 10E9 ici). Difference en cycle est dans difference_1 à 5
-		lds temp, difference_1
-		cpi temp, $0
+		call testhit		;V1.61: Z=1 si difference_1..5 tous a zero (vrai hit, plus seulement le LSB)
 		breq nextphase7_	;c'est égale on passe a la phase suivante
 
 		call compare2			;compare si la difference est torp grande et met le flag a 1 si oui.
@@ -893,107 +579,168 @@ nextphase7_ :rjmp nextphase7
 cestgood:
 		clr temp						;reset toolargeflag_try1
 		sts toolargeflag_try1,temp
-		lds temp, sign		;si = 1 = positif donc trop rapide
-		cpi temp, $0	
-		breq Frequence_trop_basse7
-;		rjmp Frequence_trop_haute5
+		rjmp correction		;sign (1=trop haute, 0=trop basse) est appliqué par la routine commune (V1.60, checkrunled inclus)
 
-		call checkrunled		;compare marge d'erreur et allume ou ferme le led run si acceptable
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_7
-Frequence_trop_haute7:
-		;ici il faut diminuer car le résultat est positif
-		;je regarde si je corrige un peu ou beaucoup
-		lds temp2, frequence_1 ;ici frequence 1 est superieur a 0. C'est exactement le nombre de hz de trop
-		cpi temp2, 1
-		brne Cavautlapeine7a ;je l'ai deactivé. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
-		ldi temp,Phase6QuickLittleStep_L	;je met 3. ca prend 8 pour plus ou moins 1 hz. a 1 c'est trop lent et la fréquence change plus vite que la correction. A 3 c'Est mieux
-		ldi temp2,Phase6QuickLittleStep_H	;a 2 aussi c'etait pas si mal; Finalement j'ai mis 1.
-		rjmp calcul7a
-classic_7:
-		ldi temp,Phase6Jump_L
-		ldi temp2,Phase6Jump_H
-		rjmp calcul7a
-Cavautlapeine7a:
-		ldi temp, Phase6QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
-		;ce qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
-		mul temp2, temp		;reponse dans R0
-		movw temp, r0			;je garde cette réponse dans r17:r16
-calcul7a:
-		lds xh, ocr1ah		;c'est donc positif on descent
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		sub xl, temp
-		sbc	xh,temp2
-		cp xl, r20			;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
-		cpc xh, r21			;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
-		brsh unreachable7
-		sts ocr1ah, xh		
-		sts ocr1al, xl
-		call afficherunmode
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-
-unreachable7: rjmp unreachable
 nextphase7:
 		call RunLedOn
 		call afficherunmode
 		call affichesatellite2
 		lds r19, ocr1ah		;10,000,000.000 vient d'etre compté ici on conserve la valeur trouvé dans l'eeprom.
 		lds r18,ocr1al
-		sts pwmphase6h, r19	
+		sts pwmphase6h, r19
 		sts pwmphase6l, r18
 		clr temp						;reset toolargeflag_try1
 		sts toolargeflag_try1,temp
 		call eepromw
 		rjmp Retour_en_mode_interrupt
 
-Frequence_trop_basse7:	
-;		rjmp Frequence_trop_basse5
-		;call CheckRunLedNegatif	;gere le led run
-		call checkrunled
-		lds temp, QuickOrClassic
-		cpi temp, 1
-		brne classic_8
-		lds temp, frequence_1
-		ldi temp2, $ff		;ff - frequence + 1 est ce qui manque pour arriver a 0 pile
-		sub temp2, temp
-		inc temp2			;temp2 a maintenant le nombre de hz manquant
-		cpi temp2, 1
-		brne Cavautlapeine7b ;je l'ai deactivé. car quand une gps pulse error survient. La corection etait trop grande. En run mode une grande correction ne devrait pas arriver
-		ldi temp ,Phase6QuickLittleStep_L		;Add en passant par registre r16 et r17 car la fonction addi n'existe pas
-		ldi temp2 ,Phase6QuickLittleStep_H		;Add high byte with carry
-		rjmp calcul7b
-classic_8:
-		ldi temp,Phase6Jump_L
-		ldi temp2,Phase6Jump_H
-		rjmp calcul7b
-Cavautlapeine7b:
-		ldi temp, Phase6QuickLargeStep		;on charge le pas.  1/(1000x152.59uhz) = 6.55 apres calcul sur 10 secondes ocxo varie de 962 a 046 donc 84  de difference entre 0-5v
-		;ca qui donne 8.4 hz et non 10 (2hz/v) Le pas passe donc a 128.175uv pour une valeur de 1/(1000x128.74uv) = 7.8 donc je met 8
-		mul temp2, temp
-		movw temp, r0			;je garde cette réponse dans r17:r16		;je garde cette réponse dans r17:r16
-calcul7b:
-		lds xh, ocr1ah
-		lds xl,ocr1al
-		lds r21, ocr1ah		;je copie aussi dans r21:r20 pour comparer plus bas
-		lds r20,ocr1al
-		add xl, temp
-		adc xh, temp2
-		cp xl, r20			;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
-		cpc xh, r21
-		brlo unreachable7_1
-		sts ocr1ah, xh
-		sts ocr1al, xl
-		call afficherunmode
-		call affichesatellite2
-		rjmp Retour_en_mode_interrupt
-
-unreachable7_1: rjmp unreachable
+;*****************************************************************************************************************************************
+;*****************************************************************************************************************************************
+;*********************************************************   testhit *********************************************************************
+;*****************************************************************************************************************************************
+;V1.61: teste si la frequence comptee est EXACTEMENT egale a la reference de la phase.
+;Avant, seul difference_1 (le LSB) etait teste: une erreur de 256, 512... cycles (LSB a zero)
+;passait pour un hit parfait et, en mode run, sauvegardait une mauvaise config dans l'eeprom.
+;Entree: difference_1..5 remplis par compare. Sortie: Z = 1 si vrai hit (tous a zero).
+;Corrige aussi le LED run via CheckRunLed qui teste difference_2 maintenant.
+testhit:
+		lds temp, difference_1
+		lds temp2, difference_2
+		or temp, temp2
+		lds temp2, difference_3
+		or temp, temp2
+		lds temp2, difference_4
+		or temp, temp2
+		lds temp2, difference_5
+		or temp, temp2
+		ret
 
 ;*****************************************************************************************************************************************
+;*********************************************************   correction commune **********************************************************
+;*****************************************************************************************************************************************
+;V1.60: une seule routine remplace les 8 blocs de correction (phases 1 a 6, trop haute / trop basse).
+;Appel APRES compare. sign = 1 → frequence trop haute (on descend le pwm), sign = 0 → trop basse (on monte le pwm).
+;Les pas et la routine d'affichage sont lus dans PhaseTable selon calibrationphase:
+;- classic (jumper pb5): pas fixe Jump
+;- quick (phases 3 a 6 seulement): si l'erreur vaut 1 → QuickLittleStep, sinon erreur x QuickLargeStep
+;V1.61: l'erreur est maintenant sur 16 bits (difference_2:difference_1). Avant elle etait tronquee
+;a 8 bits (frequence_1 = erreur mod 256), donc fausse des 256 cycles d'ecart (saut faux, ou saut nul
+;si l'erreur etait un multiple exact de 256). Si le pas calcule depasse 65535 (correction plus grande
+;que la portee complete du pwm) → unreachable.
+;- debordement du pwm (0000 ou FFFF franchi) → unreachable
+;Terminaison par rjmp Retour_en_mode_interrupt (pas de ret, comme les blocs originaux).
+correction:
+		lds temp, calibrationphase		;phase 1 a 6 → index 0 a 5
+		subi temp, 1
+		lsl temp
+		lsl temp
+		lsl temp						;x 8 : 8 bytes par entree de table
+		ldi zh, high(PhaseTable*2)
+		ldi zl, low(PhaseTable*2)
+		add zl, temp
+		clr temp
+		adc zh, temp
+		lpm r18, z+						;Jump_L (classic)
+		lpm r19, z+						;Jump_H
+		lpm r20, z+						;QuickLittleStep_L
+		lpm r21, z+						;QuickLittleStep_H
+		lpm r22, z+						;QuickLargeStep
+		lpm r23, z+						;flags: bit0 = checkrunled, bit1 = mode quick disponible
+		lpm r24, z+						;adresse (mot) de la routine d'affichage de la phase
+		lpm r25, z+
+
+;calcul du pas selon classic/quick (le sens, lui, est applique plus bas a partir de sign)
+		lds temp, QuickOrClassic
+		cpi temp, 1
+		brne corr_classic				;jumper pb5 = classic → pas fixe
+		sbrs r23, 1						;bit1 = 0 (phases 1 et 2) → pas fixe meme en mode quick
+		rjmp corr_classic
+;V1.61: magnitude de l'erreur sur 16 bits = difference_2:difference_1. Avant: frequence_1 seul,
+;donc l'erreur etait tronquee a 8 bits (mod 256) et les corrections etaient fausses des 256 cycles.
+;La reference des phases 3 a 6 a un LSB a 0, donc difference EST l'erreur en cycles.
+corr_quick:
+		lds temp, difference_1
+		lds temp2, difference_2
+		cpi temp, 1
+		brne corr_quick_multi
+		cpi temp2, 0
+		brne corr_quick_multi
+		movw temp, r20					;erreur de 1 → petit pas
+		rjmp corr_applique
+corr_quick_multi:
+;pas = erreur (16 bits) x QuickLargeStep → produit 24 bits b2:b1:b0
+		mov r20, temp					;erreur L
+		mov r21, temp2					;erreur H
+		mul r20, r22					;errL x step → r1(h):r0(l)
+		mov r18, r0						;b0 (poids faible du produit)
+		mov r19, r1						;m1h
+		mul r21, r22					;errH x step → r1(h):r0(l) = m2
+		add r19, r0						;b1 = m1h + m2l
+		clr temp
+		adc temp, temp					;retenue du b1
+		add temp, r1					;b2 = m2h + retenue
+		tst temp
+		brne corr_unreachable			;produit > 65535: la correction demandee depasse la portee complete du pwm
+		movw temp, r18					;pas 16 bits = b0(L):b1(H)
+		rjmp corr_applique
+corr_classic:
+		movw temp, r18					;pas fixe Jump
+corr_applique:
+;monte ou descend le pwm et detecte le debordement (0000 ou FFFF franchi)
+		lds xh, ocr1ah
+		lds xl, ocr1al
+		mov r18, xh						;copie de l'ancienne valeur pour detecter le debordement
+		mov r19, xl
+		lds r0, sign
+		tst r0
+		breq corr_monte
+;Frequence_trop_haute: il faut diminuer
+		sub xl, temp
+		sbc	xh, temp2
+		cp xl, r19						;compare avec 0. Si plus haut l'ocxo est incompatible. Frequency unreachable
+		cpc xh, r18						;Je vien de soustraire ca devrait etre forcement plus bas. Je verifie. Si plus haut on a defoncé.
+		brsh corr_unreachable
+		rjmp corr_sauve
+corr_monte:
+		add xl, temp
+		adc xh, temp2
+		cp xl, r19						;si plus bas c'est qu'on a fait le tour, on a défoncé... unreachable
+		cpc xh, r18
+		brlo corr_unreachable
+corr_sauve:
+		sts ocr1ah, xh
+		sts ocr1al, xl
+		sbrc r23, 0						;phases 5 et 6: compare marge d'erreur et allume ou ferme le led run
+		call checkrunled
+		movw zl, r24					;affiche le pwm + la phase (affichephase1 a 5 ou afficherunmode)
+		icall
+		call affichesatellite2
+		rjmp Retour_en_mode_interrupt
+corr_unreachable:
+		rjmp unreachable
+
+;************************************************************************************************
+;V1.60: table des pas de correction par phase. 8 bytes par entree, phase 1 a 6 (lue par correction):
+;  byte0-1 : Jump_L:Jump_H        pas fixe du mode classic
+;  byte2-3 : QuickLittleStep_L:H  pas utilise en quick quand l'erreur (mod 256) vaut 1
+;  byte4   : QuickLargeStep       en quick, le pas = erreur x cette valeur
+;  byte5   : flags: bit0 = 1 → call checkrunled (phases 5 et 6), bit1 = 1 → mode quick disponible (phases 3 a 6)
+;  byte6-7 : adresse (mot) de la routine d'affichage de la phase, pour icall
+;************************************************************************************************
+PhaseTable:
+		.db Phase1Jump_L, Phase1Jump_H, 0, 0, 0, 0
+		.dw affichephase1
+		.db Phase2Jump_L, Phase2Jump_H, 0, 0, 0, 0
+		.dw affichephase2
+		.db Phase3Jump_L, Phase3Jump_H, Phase3QuickLittleStep_L, Phase3QuickLittleStep_H, Phase3QuickLargeStep, 2
+		.dw affichephase3
+		.db Phase4Jump_L, Phase4Jump_H, Phase4QuickLittleStep_L, Phase4QuickLittleStep_H, Phase4QuickLargeStep, 2
+		.dw affichephase4
+		.db Phase5Jump_L, Phase5Jump_H, Phase5QuickLittleStep_L, Phase5QuickLittleStep_H, Phase5QuickLargeStep, 3
+		.dw affichephase5
+		.db Phase6Jump_L, Phase6Jump_H, Phase6QuickLittleStep_L, Phase6QuickLittleStep_H, Phase6QuickLargeStep, 3
+		.dw afficherunmode
+
 ;*********************************************************unreachable*********************************************************************
 ;*****************************************************************************************************************************************
 ;*****************************************************************************************************************************************
@@ -1014,9 +761,13 @@ Halted: rjmp Halted
 ;*************
 ;*************
 CheckRunLed:
+		lds temp2, difference_2	;V1.61: si difference_2 != 0, l'erreur depasse 255 → pas un hit
+		tst temp2
+		brne led_pas_un_hit
 		lds temp2, difference_1	;ramasse la frequence obtenu
 		cpi temp2, Hit+1			;compare avec marge d'erreur accepté. J'ajoute +1 pour coriger.
 		brlo met_a_on
+led_pas_un_hit:
 		call RunLedOff
 		rjmp No_
 met_a_on:
