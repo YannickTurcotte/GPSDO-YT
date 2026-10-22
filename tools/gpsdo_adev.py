@@ -41,7 +41,12 @@ import matplotlib
 matplotlib.use("Agg")          # fonctionne sans ecran; le PNG est toujours sauvegarde
 import matplotlib.pyplot as plt
 
-RE_FREQ = re.compile(r"([\d,]+\.\d{3})\s*Hz")
+# Groupement strict des milliers: '10,000,000.005' OK, mais '12,10,000,000.005'
+# (le '12,' du nombre de satellites colle a la freq sur la meme ligne) est refuse.
+# L'ESPACE avant 'Hz' est obligatoire: le firmware envoie '...005 Hz' pour une vraie
+# mesure (tx $20 avant Hz dans Latch) mais '10,000,000.000Hz' SANS espace pour
+# l'ecran statique self-running (message data33) -> ce dernier est exclude d'office.
+RE_FREQ = re.compile(r"(\d{1,3}(?:,\d{3})+\.\d{3}|\d+\.\d{3}) Hz")
 RE_PWM = re.compile(r"0x([0-9A-Fa-f]{4})")
 RE_GATE = re.compile(r",\s*1000\s*s?\s*,")
 RE_SAT = re.compile(r"S\s*=\s*(\d{1,2})")
@@ -78,27 +83,50 @@ def lire_log(chemin):
 
 
 def extraire_echantillons(texte, epochs, pos_lignes):
-    """Echantillons = freq '...Hz' dont la fenetre suivante contient pwm '0x####' + ',1000,'.
+    """Echantillons = freq '10,000,000.005 Hz' de porte 1000 s uniquement.
 
-    Le GPSDO envoie la frequence PUIS le pwm/satellites (\\r\\n0x8375,1000,S=09,),
-    donc la fenetre est prise apres la frequence, jusqu'a la prochaine frequence.
+    Format reel du GPSDO (une ligne par porte):
+        0x86DD,1000,S=12,10,000,000.005 Hz
+    Le pwm imprime sur la meme ligne juste AVANT la frequence est celui qui a
+    produit la mesure (le GPSDO imprime la freq a la fin de la porte, puis le
+    pwm apres correction, donc ligne N = pwm de la porte N + freq de la porte N).
+    Les phases 1s/10s/60s/200s s'impriment sans decimales ni 'Hz' -> jamais
+    confondues. L'ecran statique self-running '10,000,000.000Hz' n'a pas de pwm
+    -> ignore. Secours: si aucun pwm avant (capture coupee en plein milieu),
+    on cherche apres la frequence.
     """
     ech = []
     matches = list(RE_FREQ.finditer(texte))
     for i, m in enumerate(matches):
         f = float(m.group(1).replace(",", ""))
-        fin = matches[i + 1].start() if i + 1 < len(matches) else min(len(texte), m.end() + 250)
-        fenetre = texte[m.end():fin]
-        pwm = RE_PWM.search(fenetre)
-        if not pwm or not RE_GATE.search(fenetre):
-            continue  # ecran statique self-running ou message sans mesure
+        debut_avant = matches[i - 1].end() if i > 0 else 0
+        fin_apres = matches[i + 1].start() if i + 1 < len(matches) else min(len(texte), m.end() + 250)
+
+        # 1) pwm sur la meme ligne, juste avant la freq (pairage exact)
+        avant = texte[debut_avant:m.start()]
+        pwm = None
+        for pm in RE_PWM.finditer(avant):
+            pwm = pm              # derniere occurrence = celle de cette ligne
+        fenetre = None
+        if pwm and RE_GATE.search(avant[pwm.end():]):
+            fenetre = avant[pwm.end():]
+
+        # 2) secours: pwm apres la freq (debut de capture coupe en plein milieu)
+        if fenetre is None:
+            apres = texte[m.end():fin_apres]
+            pwm = RE_PWM.search(apres)
+            if pwm and RE_GATE.search(apres):
+                fenetre = apres
+
+        if fenetre is None:
+            continue  # pas de pwm + porte 1000 s associee
+        sat = RE_SAT.search(fenetre)
         idx_ligne = 0
         for k in range(len(pos_lignes) - 1):
             if pos_lignes[k] <= m.start() < pos_lignes[k + 1]:
                 idx_ligne = k
                 break
         ep = epochs[idx_ligne] if idx_ligne < len(epochs) else None
-        sat = RE_SAT.search(fenetre)
         ech.append((ep, f, pwm.group(1).upper(), sat.group(1) if sat else ""))
     return ech
 
