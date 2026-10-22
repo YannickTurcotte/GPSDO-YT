@@ -418,11 +418,23 @@ greater:
 	call subtraction40bitsPositif	;trouve et save la difference
     ldi temp,0x01					;signed
 	sts sign, temp
+	ldi temp, Invert
+	cpi temp, 0
+	breq WeRunInNormalMode
+	clr temp
+	sts sign, temp
+WeRunInNormalMode:
 	ret
 plusbas:
 	call subtraction40bitsNegatif	;trouve et save la difference
 	clr temp						;signed
 	sts sign, temp
+	ldi temp, Invert
+	cpi temp, 0
+	breq WeRunInNormalMode1
+	ldi temp, 1
+	sts sign, temp
+WeRunInNormalMode1:
 	ret
 ;****************************************************************************************************************
 subtraction40bitsPositif:

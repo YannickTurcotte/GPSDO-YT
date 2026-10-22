@@ -1,9 +1,9 @@
 ;.dseg	;data segment de 512 sur atmega48
 data1:
-	.db "1000s gate 1.58q" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.59q" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data2:	
-	.db "1000s gate 1.58c" ;  table de donnée. 16 caractères, PAIR
+	.db "1000s gate 1.59c" ;  table de donnée. 16 caractères, PAIR
 	.db $04,00     		;04 signifie la fin du message (04, 00) est PAIR
 data3:
 	.db "wait 15 min     " ;
@@ -92,8 +92,37 @@ data40:
 data41:
 	.db "Too much, Stall " ; ,04 si impair
 	.db $04,00
+data42:
+	.db "Detecting Serial" ; ,04 si impair
+	.db $04,00
+data43:
+	.db "4800" ; ,04 si impair
+	.db $04,00
+data44:
+	.db "9600" ; ,04 si impair
+	.db $04,00
+data45:
+	.db "14400 " ; ,04 si impair
+	.db $04,00
+data46:
+	.db "19200 " ; ,04 si impair
+	.db $04,00
+data47:
+	.db "38400 " ; ,04 si impair
+	.db $04,00
+data48:
+	.db "57600 " ; ,04 si impair
+	.db $04,00
+data49:
+	.db "115200" ; ,04 si impair
+	.db $04,00
+data52:
+	.db "No serial com " ; ,04 si impair
+	.db $04,00
+data53:
+	.db "Detected" ; ,04 si impair
+	.db $04,00
 hexa:
-
 .db		$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$41,$42,$43,$44,$45,$46
 
 ;******************************************reset afficheur*********************************
@@ -475,7 +504,7 @@ awesome:
 ;**************************** affichememoire *************************************
 ;affiche le contenu tel quel. exemple si $3a est dans temp 3a sera afficher
 affichememoire:
-		push temp
+		push temp		;push 2 times
 		push temp
 		swap temp		;exemple 3A
 		andi temp, $0f	;on garde le  3

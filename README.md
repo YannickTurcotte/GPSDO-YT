@@ -172,3 +172,7 @@ Remove the averaging algorithm. After 20 good know values, an average was made a
 
 If a miscount of + or - .050 happen. uC will reload the last good config from eeprom and do a recount first. If result isn't fix, uC return to 1 second gate to do a full recalibration.
 -Now the count LED is only flashing at 2HZ. The LED turn on IRQ0 and turn off on next IRQ0. IRQ0 is the 1 second pulse. This LED was flashing too quick and was producing harmonic.
+
+1.59
+-Auto detection of the serial speed at startup (4800 to 115200). The detected speed is saved in eeprom (address 2) and reused on next boot, so modules with other baud rates than 9600 work out of the box.
+-Version displayed: 1.59q / 1.59c.

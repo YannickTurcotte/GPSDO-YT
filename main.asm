@@ -32,8 +32,9 @@
 .equ frebcd4 = $125
 .equ frebcd5 = $126
 .equ frebcd6 = $127
-.equ pwmphase6h = $12b
-.equ pwmphase6l= $12c
+.equ pwmphase6h = $12b		;saved in eeprom later
+.equ pwmphase6l= $12c		;saved in eeprom later
+.equ SerialSpeed = $12d		;saved in eeprom later
 .equ echantillon_timel = $12e
 .equ echantillon_timeh = $12f
 .equ eeprompointer = $134
@@ -144,9 +145,11 @@
 .equ Phase6QuickLittleStep_H = 0x00
 .equ Phase6QuickLittleStep_L = 0x01
 .equ Phase6QuickLargeStep = 0x04
-
+;invert output
+.equ Invert=0 ; 0 for normal 1 to inverse pwm output. Routine is in Math.inc
+.equ EepromStartPointer = $03		;The beginning where last frequency will be saved. 0-1 = pwm 2=serial speed
 .eseg 
-.db $83,$b0 ;genere un fichier eeprom lors de la compilation avec les valeurs de .eseg
+.db $9f,$19 ;genere un fichier eeprom lors de la compilation avec les valeurs de .eseg
 
 .CSEG	;code segment. 
 .include "m328pdef.inc"		;instruction jmp utiliser pour interrupt
@@ -188,29 +191,26 @@ RESET:	ldi	temp,low(RAMEND)
 		ldi temp, (1<<ISC01)|(1<<ISC00)|(1<<ISC11)|(0<<ISC10)	;falling edge les 2
 		sts eicra, temp
 ;initialisation du pointeur de eeprom
-		ldi temp, $02	;on commence a ecrire a l'adresse 2. On garde 0,1 pour le pwm config
+		ldi temp, EepromStartPointer	;on commence a ecrire a l'adresse 3, non 2. On garde 0,1 pour le pwm config et 2 pour serial speed
 		sts eeprompointer, temp
 ;init flag
 		;tous les flags sont a 0 par ClrAllMemory
+;init afficheur
+		call reset_afficheur
 ;check for classicmode or quick mode by sensong jumper pb5. if pb5 is 0 (jumper on) = classic.  1 = quick (jumper off)
 		sbis pinb, pb5	;si jumper is on saute la ligne
 		rjmp classic
 		ldi temp, 1
-		sts QuickOrClassic, temp
+		sts QuickOrClassic, temp		;set the flag with jumper setting
 		rjmp QuickOrClassicEnd
 classic:
 		clr temp
 		sts QuickOrClassic, temp
-QuickOrClassicEnd: ;
-;init serial uart
-		call USART_Init
-		call nextline
-		call tx
-;init afficheur
-		call reset_afficheur
+QuickOrClassicEnd:
+;Displaying Version quick mode
 		call videecran
 		call posi1
-		lds temp, QuickOrClassic
+		lds temp, QuickOrClassic		;read flag previously set
 		cpi temp, 1
 		brne classicmode1
 		ldi r31,high(data7*2)  		;"GPSDO YT 1.58q "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
@@ -225,6 +225,7 @@ QuickOrClassicEnd: ;
 		call tx
 		rjmp classicmode2						;du registre R31 et R30. Z est en fait 16 bits de long.
 classicmode1:
+;Displaying Version classic mode
 		ldi r31,high(data7*2)  		;"GPSDO YT 1.58c "    Ici on va chercher l'addresse mémoire ou se retrouve le data à afficher.
 		ldi r30,low(data7*2)		;cette addresse se retrouve dans le registe Z. Qui est constitué en fait
 		call message				;dans message, on affiche ce que pointe Z "ceci est un test"
@@ -265,7 +266,7 @@ classicmode2:
 	
 valeureepromutilise:	
 ;Push button pas appuyé.
-		call eepromr			;va lire la config du eeprom et se retrouve dans pwmphase6h, 6l
+		call eepromr			;va lire la config du eeprom et se retrouve dans pwmphase6h, 6l read 0,1,2 0-1 for pwm value and 2 for serial
 		lds r17, pwmphase6l
 		lds r18, pwmphase6h
 		ldi temp, $ff
@@ -320,12 +321,15 @@ pasdevaleurdanseeprom2:
 		call tempo5s
 		ldi temp, $01				;on commence a la phase 1
 		sts calibrationphase, temp
-
-;compteurs
+;compteurs and init serial
 ;*********************************************************************************************************************************
 ;**************************************************** compteurs timer0 ***********************************************************
 ;*********************************************************************************************************************************
 ytyt:
+;init serial uart
+		call USART_Init
+		call nextline
+		call tx
 ;overflow du timer0
 		ldi temp, (1<<TOIE0)	;active interupt overflow
 		sts timsk0, temp
@@ -740,7 +744,7 @@ phase5:
 		rjmp Retour_en_mode_interrupt
 phase5next:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 
-		call eepromwritebytes	;ecris la frequence_1 trouvé dans eeprom commence a l'adresse 2 et incremente pour le prochain tour.
+		call eepromwritebytes	;ecris la frequence_1 trouvé dans eeprom commence a l'adresse 3 et incremente pour le prochain tour.
 		;;rendu a la phase 5 je garde tous les resultata pour analyse dans eeprom.
 		call compare		;Le resultat est dans frequence et on compare avec la frequence selon la phase. Difference en cycle est dans difference_1 a 5
 		lds temp, difference_1
@@ -853,12 +857,12 @@ runmode:	;Formule:  FFFF/(frMax-Frmin) X (10E6-Frmin)
 		sts calibrationphase, temp
 		ldi temp,$e8 ;1000 secondes
 		sts echantillon_timel, temp	;nombre de seconde a echantilloner
-		ldi temp,$3
+		ldi temp, $3
 		sts echantillon_timeh,temp
 		rjmp Retour_en_mode_interrupt
 
 runmodenext:
-		call eepromwritebytes	;track tous les valeur dans eeprom adresse 02 to ff et tourne en boucle
+		call eepromwritebytes	;track tous les valeur dans eeprom adresse 03 to ff et tourne en boucle
 		call compare		;Le resultat est dans frequence et on compare avec la frequence de phase (reference 10E9 ici). Difference en cycle est dans difference_1 à 5
 		lds temp, difference_1
 		cpi temp, $0

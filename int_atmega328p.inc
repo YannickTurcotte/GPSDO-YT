@@ -11,7 +11,7 @@ jmp reset ; PCINT2
 jmp watchdog_overflow ; Watchdog Timeout
 jmp reset ; Timer2 CompareA
 jmp reset ; Timer2 CompareB
-jmp reset ; Timer2 Overflow
+jmp SerialExit ; Timer2 Overflow
 jmp reset ; Timer1 Capture
 jmp reset ; Timer1 CompareA
 jmp reset ; Timer1 CompareB

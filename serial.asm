@@ -2,28 +2,228 @@
 ;
 ;Serial routine
 
-.equ   baud=9600		;Baud rate 
-.equ   fosc=10000000	;Crystal frequency 
-
-USART_Init:
-		in temp, pinb	;check si jumper sur pb3. Si oui on est a 4800 au lieu de 9600
-		andi temp, 0b00001000
-		cpi temp, 0
-		breq onesta4800
-		ldi r17, high(fosc/(16*baud)-1) 
-		ldi r16, low(fosc/(16*baud)-1) 
-		rjmp setbaudrate 
- onesta4800:
-		ldi r17, high(fosc/(16*4800)-1) 
-		ldi r16, low(fosc/(16*4800)-1)
-setbaudrate:    
+.equ   fosc=10000000	;Crystal frequency
+Speed: ;from 4800 to 115200 on 10mhz
+.db		$81,$40,$2a,$1f,$0f,$09,$04,$00
+;.db $04,$09,$0f,$1f,$2a,$40,$81,$00
+SerialExit:		;come here 152x by second with 256 prescaler to prevent the uC of hanging in serial speed detection
+		adiw yh:yl,1
+		reti
+InitSerialEeprom:
+		clr r17
+		lds r16, SerialSpeed		;previously read by eepromr
 		STORE UBRR0H, r17 
-		STORE UBRR0L, r16 
+		STORE UBRR0L, r16
+		load r18, UCSR0B
+		cbr r18, (1<<RXEN0)			; disable receiver (this also clears the receive buffer from any characters that may have been received using the previous baud rate)
+		STORE UCSR0B, r18
 		ldi r16, (1<<RXEN0)|(1<<TXEN0) |(0<<RXCIE0)	; Enable receiver and transmitter, interrupt rx disabled
 		STORE UCSR0B,r16 
 		ldi r16, (0<<USBS0)|(3<<UCSZ00)				; Set frame format: 8data, 1stop bit 
 		STORE UCSR0C,r16 
-		ret 
+		ret
+EndOfAllTry:
+USART_Init:
+		lds temp, SerialSpeed		;previously read by eepromr
+		cpi temp, $FF				;if ff = empty need full setup
+		breq NeedFullSetup
+		rjmp InitSerialEeprom
+NeedFullSetup:
+		clr r17
+		ldi r16, $81				;activating 4800 to start up
+		STORE UBRR0H, r17 
+		STORE UBRR0L, r16
+		load r18, UCSR0B
+		cbr r18, (1<<RXEN0)			; disable receiver (this also clears the receive buffer from any characters that may have been received using the previous baud rate)
+		STORE UCSR0B, r18
+		ldi r16, (1<<RXEN0)|(1<<TXEN0) |(0<<RXCIE0)	; Enable receiver and transmitter, interrupt rx disabled
+		STORE UCSR0B,r16 
+		ldi r16, (0<<USBS0)|(3<<UCSZ00)				; Set frame format: 8data, 1stop bit 
+		STORE UCSR0C,r16 
+		rcall seconde_tempo		;attends une 1.3s le temps de voir si le buffer recoit de quoi
+		rcall tempo300ms
+		load r16, UCSR0A		;regarde si ya de quoi qui a été recu par le serial
+		sbrs r16, RXC0			;skip if bit in register is set
+		rjmp NoSerialDetected	;rxc0 est a 0 on a rien recu
+;Interupt
+		ldi r16, (1<<TOIE2)			; Activer l'interruption pour l'overflow (TOIE2), this is creating an interrupt.
+		store TIMSK2, r16			; Configurer le registre d'interruption pour le Timer/Counter 2
+		ldi r16, (1<<cs22|1<<cs21)   ; /256 Donc 152
+		store TCCR2B, r16			; Configurer le registre de contrôle du Timer/Counter 2
+		call videecran
+		call posi1
+		ldi r31,high(data42*2)		;detecting serial		
+		ldi r30,low(data42*2)
+		call message
+;SerialDetectingStart:
+		clr xl
+		ldi r31,high(speed*2)		;4800 at startup
+		ldi r30,low(speed*2)
+NextSpeed:
+		cli
+		clr yl
+		inc xl
+		lpm r16, Z+					;Load speed in r16
+		push zh						;keep z address on stack because Z is used in messages sub routine.
+		push zl
+		cpi temp, $00
+		breq EndOfAllTry
+		clr r17 
+setbaudrate:    
+		STORE UBRR0H, r17 
+		STORE UBRR0L, r16
+		load r18, UCSR0B
+		cbr r18, (1<<RXEN0)			; disable receiver (this also clears the receive buffer from any characters that may have been received using the previous baud rate)
+		STORE UCSR0B, r18
+		ldi r16, (1<<RXEN0)|(1<<TXEN0) |(0<<RXCIE0)	; Enable receiver and transmitter, interrupt rx disabled
+		STORE UCSR0B,r16 
+		ldi r16, (0<<USBS0)|(3<<UCSZ00)				; Set frame format: 8data, 1stop bit 
+		STORE UCSR0C,r16 
+
+;We received something.
+		cpi xl, 1			;if x = 1 speed = 4800
+		brne Onestpasa4800
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data43*2)  ;4800		
+		ldi r30,low(data43*2)
+		rcall message
+
+Onestpasa4800:
+		cpi xl, 2			;if x = 2 speed = 9600
+		brne Onestpasa9600
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data44*2)  ;9600		
+		ldi r30,low(data44*2)
+		rcall message
+
+Onestpasa9600:
+		cpi xl, 3
+		brne Onestpasa14400
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data45*2)  ;14400		
+		ldi r30,low(data45*2)
+		rcall message
+
+Onestpasa14400:
+		cpi xl, 4
+		brne Onestpasa19200
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data46*2)  ;19200		
+		ldi r30,low(data46*2)
+		rcall message
+
+Onestpasa19200:
+		cpi xl, 5
+		brne Onestpasa38400
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data47*2)  ;38400		
+		ldi r30,low(data47*2)
+		rcall message
+
+Onestpasa38400:
+		cpi xl, 6
+		brne Onestpasa57600
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data48*2)  ;57600		
+		ldi r30,low(data48*2)
+		rcall message
+
+Onestpasa57600:
+		cpi xl, 7
+		brne Onestpasa115200
+		rcall posi2
+		rcall effaceligne
+		rcall posi2
+		ldi r31,high(data49*2)  ;115200		
+		ldi r30,low(data49*2)
+		rcall message
+		;rjmp check_if_ok
+Onestpasa115200:
+		pop zl		;unstack speed address if next tour.
+		pop zh
+		clr yl
+		sei			;active l'interupt counter2 overflow
+check_if_ok:	;$GPGGA pour neo 6m MAIS GNGGA sur neo 8M Donc je regarde pour seulement GGA
+RXs: ; Wait for data to be received
+		cpi yl, 255				;timeout detection. 152 for 1 second. 
+		breq NextSpeed1
+		load r17,UCSR0A		 
+		sbrs r17,RXC0			;This flag bit is set when there are unread data in the receive buffer and cleared when the receive buffer is empty. 1 = unread
+		rjmp RXs				;donc loop ici jusqu'au temps que rxc0 vaut 1
+		;sbrc r17,FE0				;this bit is set if there is a frame error reading the character
+		;rjmp NextSpeed1
+		lds r16, UDR0			; Get and return received data from buffer 
+		cpi temp, $47	;G
+		brne check_if_ok
+RXs1: ; Wait for data to be received
+		cpi yl, 255	
+		breq NextSpeed1
+		load r17,UCSR0A		 
+		sbrs r17,RXC0			
+		rjmp RXs1			
+		;sbrc r17,FE0				;this bit is set if there is a frame error reading the character
+		;rjmp NextSpeed1			
+		lds r16, UDR0			
+		cpi temp, $47	;G
+		brne check_if_ok
+RXs2: ; Wait for data to be received
+		cpi yl, 255		
+		breq NextSpeed1
+		load r17,UCSR0A		 
+		sbrs r17,RXC0			
+		rjmp RXs2		
+		;sbrc r17,FE0				;this bit is set if there is a frame error reading the character
+		;rjmp NextSpeed1
+		lds r16, UDR0
+		cpi temp, $41	;A
+		brne check_if_ok
+		;GGA as been detected Speed is found
+		cli
+		clr r16
+		store TIMSK2, r16      ; stop counter and interrupt
+		store TCCR2B, r16
+		;eeprom strore
+		rcall EepromSerialWrite	;ecris byte to eeprom address2
+		rcall Seconde_tempo		;to Display the speed detected longer
+		ret	;all good
+NextSpeed1: rjmp NextSpeed
+
+NoSerialDetected:
+		pop zl		;unstack speed address before the return command
+		pop zh
+		clr R16  ; turn off int overflow counter 2
+		store TIMSK2, r16
+		clr temp   ;stop counter2. Il a été activé dans Usart_Init
+		store TCCR2B, temp
+		rcall videecran
+		rcall posi1
+		ldi r31,high(data52*2) ;no serial com		
+		ldi r30,low(data52*2)
+		rcall message
+		rcall posi2
+		ldi r31,high(data53*2) ;detected 		
+		ldi r30,low(data53*2)
+		rcall message
+		clr r17
+		ldi r16, $40			;No serial but we activate the default speed at 9600 if TX is used to monitor it on computer
+		STORE UBRR0H, r17
+		STORE UBRR0L, r16
+		rcall seconde_tempo
+		rcall seconde_tempo
+		rcall seconde_tempo
+		ret
 
 RX: ; Wait for data to be received
 		load r17,UCSR0A		 
@@ -66,7 +266,7 @@ kjkj:		;on compte 7 virgules. Ensuite on lit le nombre de satellites.
 		sts satelliteh, temp
 		rcall rx
 		sts satellitel, temp		;ici le nombre de satellites est en ascii dans satelliteh:satellitel  exemple 31:32 pour afficher 12.
-		cpi temp, $2c				;regarde si nous avous recu 9 virgule au lieu de 09
+		cpi temp, $2c				;regarde si nous avous recu 9 virgule au lieu de 09. 2c = ,
 		breq pasmoduleublox
 		ret
 pasmoduleublox:
@@ -77,7 +277,7 @@ pasmoduleublox:
 		ret
 
 ;*********************************************************************************************************
-;*********************************************************************************************************
+;************affichesatellite*********************************************************************************************
 affichesatellite:
 		load r16, UCSR0A	;regarde si ya de quoi qui a été recu par le serial
 		sbrs r16, RXC0		;skip if bit in register is set
@@ -490,3 +690,4 @@ espaceserial:
 		call tx
 		pop temp
 		ret
+

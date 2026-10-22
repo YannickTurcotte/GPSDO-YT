@@ -27,22 +27,43 @@ ecr02:
 		brne ram2eeprom
 		clr temp2
 		ret
+;*******************************************************************************************************
+;Ecrit la vitesse du port serial dans eeprom. Tested working
+EepromSerialWrite:
+ecr03:	
+		sbic EECR,EEPE			; vérifie si EEWE=0 
+		rjmp ecr03
+		clr temp2				;met l'adresse 00 dans EEarl
+		ldi r16,$02
+		out EEARL, r16			;va commencer a écrire a l'adresse 2 dans le eeprom
+		out EEARH, temp2
+		load r16, UBRR0L
+		out EEDR, r16
+		ldi temp, $04
+		out eecr, temp
+		sbi EECR, EEMPE
+		sbi EECR, EEPE
+ecr04:
+		sbic EECR, EEPE			;vérifie si EEWE=0 (écriture éffectuée)
+		rjmp ecr04
+		ret
 
-;ecris la frequence_1 a l'adresse de eeprompointer. Elle commence a 2
+
+;ecris la frequence_1 a l'adresse de eeprompointer. Elle commence a 3
 eepromwritebytes:
 ecr01q:	
 		sbic EECR,EEPE		; vérifie si EEWE=0 
 		rjmp ecr01q
 		clr temp2
-		lds temp, eeprompointer	;charge l'adresse de eeprom qu'on est rendu on commence a 2 car 0 et 1 sont utilisé
-		cpi temp, $ff			;regarde si on a attein la fin du eeprom
+		lds temp, eeprompointer	;charge l'adresse de eeprom qu'on est rendu on commence a 3 car 0 et 1 et 2 sont utilisé
+		cpi temp, $ff			;regarde si on a attein la fin du eeprom. We keep only 255 bytes
 		brne onyva
-		ldi temp,$02
+		ldi temp, EepromStartPointer	;If > 255 we restart at the beginning
 		sts eeprompointer,temp
 onyva:
 		clr temp2
 		out EEARH, temp2
-		out EEARL, temp  ;va commencer a écrire a l'adresse eeprompointer. 2 par default
+		out EEARL, temp  ;va commencer a écrire a l'adresse eeprompointer. 3 par default
 		ldi	ZH,high(frequence_1)	; met l'adresse que pointe frequence_1 dans z
 		ldi	ZL,low(frequence_1)	;init Z-pointer
 ram2eepromq:
@@ -57,15 +78,16 @@ ecr02q:
 		rjmp ecr02q
 		inc temp2
 		out EEARL, temp2
-		cpi temp2, $01	;ici mettre la valeur du nombre de byte + 1
+		cpi temp2, $01	;ici mettre la valeur du nombre de byte
 		brne ram2eepromq
-		lds temp, eeprompointer	
+		lds temp, eeprompointer	; Incremente le pointer
 		inc temp
 		sts eeprompointer, temp	;4 valeur a l'heure. j'en ai pour 62 heure avant de remplir le eeprom
 		ret
 
 ;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx eepromr: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ;lit le eeprom de l'addrres 0 et 1 et l'écris dans pwmphase6h et pwmphase6l 
+;Read also address 2 for serial speen
 eepromr:
 		sbic EECR,EEPE		; vérifie si EEWE=0 
 		rjmp eepromr
@@ -77,7 +99,7 @@ eepromr:
 		ldi	ZL,low(pwmphase6h)	;init Z-pointer
 lir01:
 		sbi EECR,EERE		; validation de lecture avec EERE=1
-lir02:				; remise à 0 Watchdog
+lir02:
 		sbic	EECR,EERE	; attendre que EERE=0
 		rjmp	lir02	
 		in	temp ,EEDR	; transfert de la donnée lu dans temp
@@ -85,10 +107,10 @@ lir02:				; remise à 0 Watchdog
 		adiw xh:xl, 1
 		out EEARL, xl
 		out EEARH, xh
-		cpi xl, $02	;mettre ici le nombre de byte a lire
+		cpi xl, $03	;mettre ici le nombre de byte a lire
 		brne lir01
 		ret
-
+;****************************************************************************************************
 ; efface 256 bytes du eeprom
 effaceeeprom:
 		clr xh	;commence avec adresse 0
@@ -110,7 +132,7 @@ effaceencore:
 		inc xl			;ici on efface seulement le 256 bytes du eeprom. Xl passe de 0 a FF et deborde a 100 donc xl vaut un moment donné 0. on a fait le tour.
 		brne effaceencore
 		ret
-
+;***************************************************************************************************
 affiche_eeprom:
 		;ici on affiche la valeur du pwm et les derniere frequence trouvé. Bref l'eeprom
 		rcall videecran
@@ -139,11 +161,11 @@ affiche_eeprom:
 eepromr3:
 		sbic EECR,EEPE		; vérifie si EEWE=0 
 		rjmp eepromr3
-		clr yl
+		clr yl				;counter to diaplay 8 bytes by line
 		lds xl, eeprompointer	;on charge le pointeur pour savoir ou il faut lire dans le eeprom
 		dec xl					;on doit soustraire un pour lire l'adresse pointé -1 car l.adresse pointé na pas été écris encore.
 		clr xh
-		cpi xl, $01	;
+		cpi xl, EepromStartPointer - 1	;			0-1 for pwm 2 for serial speed. So 2 is the last
 		breq Debut_du_eeprom_atteint ;ya pas encore de donné en fait.
 		out EEARL, xl  ;va commencer a lire à l'adresse du pointeur
 		out EEARH, xh
@@ -157,7 +179,7 @@ lir02a:				; remise à 0 Watchdog
 		call affichememoireserial
 		dec xl
 		out EEARL, xl
-		cpi xl, $01	;
+		cpi xl, EepromStartPointer -1
 		breq Debut_du_eeprom_atteint
 		inc yl
 		cpi yl, 8
@@ -179,7 +201,7 @@ lir02b:				; remise à 0 Watchdog
 		call affichememoireserial
 		dec xl
 		out EEARL, xl
-		cpi xl, $01	;
+		cpi xl, EepromStartPointer -1	;
 		breq Debut_du_eeprom_atteint
 		inc yl
 		cpi yl, 8

@@ -1,0 +1,11 @@
+# Artefacts de build Microchip Studio / AVR Studio (generes par F7, ne pas suivre)
+Debug/
+Release/
+.vs/
+*.obj
+*.lss
+*.map
+*.tmp
+*.eep
+
+# Note: prep/Gpsdo.hex est suivi volontairement (fichier de distribution pour les usagers).
