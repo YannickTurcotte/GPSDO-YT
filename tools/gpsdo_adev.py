@@ -8,8 +8,10 @@ Usage:
 
 Le log peut etre:
   - le CSV produit par gpsdo_capture.py (colonnes: timestamp,epoch,brut)
-  - ou n'importe quel fichier texte brut du port serie (l'horodatage du PC
-    manque alors: les echantillons sont supposes contigus)
+  - un fichier texte brut du port serie (horodatage absent)
+  - un vieux log PuTTY brut (=~=~=~= header): les reboots, self-running,
+    gates perdues et ecrans du bouton decoupent le log en sections, et
+    l'ADEV est calculee sur la plus longue section continue
 
 Ce que le script considere comme un echantillon valable:
   une frequence "10,000,000.000Hz" IMMEDIATEMENT suivie d'un pwm "0x####,1000,"
@@ -30,6 +32,7 @@ Options:
 """
 
 import argparse
+import bisect
 import csv
 import os
 import re
@@ -127,8 +130,21 @@ def extraire_echantillons(texte, epochs, pos_lignes):
                 idx_ligne = k
                 break
         ep = epochs[idx_ligne] if idx_ligne < len(epochs) else None
-        ech.append((ep, f, pwm.group(1).upper(), sat.group(1) if sat else ""))
+        ech.append((ep, f, pwm.group(1).upper(), sat.group(1) if sat else "", m.start()))
     return ech
+
+
+# Ruptures structurelles d'un log brut (sans horodatage): tout ce qui signale
+# que des portes ont ete perdues ou que le GPSDO a redemarre.
+RE_RUPTURE = re.compile(
+    r"(No config found|Config found|Set PWM to 50%|Self running|No pulse|"
+    r"Last Frequency|Config = 0x|\d{2}:\d{2}:\d{2} UTC|"
+    r"0x[0-9A-Fa-f]{4},1000,S=\d{1,2},\n)")
+
+
+def ruptures_brutes(texte):
+    """Positions des ruptures (reboot, self-running, gate sans resultat, ecrans bouton)."""
+    return [m.start() for m in RE_RUPTURE.finditer(texte)]
 
 
 def plus_longue_sequence_contigue(ech, gap_max):
@@ -189,10 +205,24 @@ def main():
 
     ech = extraire_echantillons(texte, epochs, pos_lignes)
     if not ech:
-        sys.exit("Aucun echantillon trouve (une mesure = freq '...Hz' suivie de '0x####,1000,').\n"
+        sys.exit("Aucun echantillon trouve (une mesure = freq '... Hz' avec son pwm '0x####,1000,').\n"
                  "Verifie que le GPSDO est en mode run (porte 1000 s) et que le log n'est pas vide.")
 
-    ech, jetes = plus_longue_sequence_contigue(ech, args.gap)
+    if ech[0][0] is not None:
+        # CSV horodate: decoupe selon les trous de temps
+        ech, jetes = plus_longue_sequence_contigue(ech, args.gap)
+        note_segment = ""
+    else:
+        # log brut sans horodatage: decoupe aux ruptures structurelles
+        # (reboots, self-running, gates perdues, ecrans du bouton)
+        rupt = ruptures_brutes(texte)
+        groupes = {}
+        for s in ech:
+            groupes.setdefault(bisect.bisect_left(rupt, s[4]), []).append(s)
+        meilleur = max(groupes.values(), key=len)
+        jetes = len(ech) - len(meilleur)
+        note_segment = " (log brut: %d sections separees par des ruptures, ADEV sur la plus longue)" % len(groupes)
+        ech = meilleur
     if args.skip:
         ech = ech[args.skip:]
     n = len(ech)
@@ -252,7 +282,7 @@ def main():
 
     # ---- rapport console
     print("=" * 62)
-    print("Echantillons: %d contigus de 1000 s  (%.2f heures)" % (n, duree_h))
+    print("Echantillons: %d contigus de 1000 s  (%.2f heures)%s" % (n, duree_h, note_segment))
     if jetes:
         print("Echantillons ignores (trou horaire / hors sequence): %d" % jetes)
     print("PWM debut/fin: 0x%s -> 0x%s" % (pwm[0], pwm[-1]))
