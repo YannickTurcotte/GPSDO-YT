@@ -321,4 +321,20 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit as e:
+        # si le log a ete glisse-depose sur le .py, la fenetre s'ouvre et se ferme
+        # aussitot: pause pour laisser le temps de lire le message d'erreur
+        try:
+            if sys.stdin is not None and sys.stdin.isatty() and e.code not in (None, 0):
+                input("\nAppuyez sur Entree pour fermer...")
+        except (AttributeError, EOFError):
+            pass
+        raise
+    # meme pause apres un rapport reussi (fenetre de glisser-deposer)
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            input("\nAppuyez sur Entree pour fermer...")
+    except (AttributeError, EOFError):
+        pass
