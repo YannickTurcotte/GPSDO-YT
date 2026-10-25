@@ -212,6 +212,7 @@ def main():
         # CSV horodate: decoupe selon les trous de temps
         ech, jetes = plus_longue_sequence_contigue(ech, args.gap)
         note_segment = ""
+        seg_count = 0
     else:
         # log brut sans horodatage: decoupe aux ruptures structurelles
         # (reboots, self-running, gates perdues, ecrans du bouton)
@@ -221,7 +222,8 @@ def main():
             groupes.setdefault(bisect.bisect_left(rupt, s[4]), []).append(s)
         meilleur = max(groupes.values(), key=len)
         jetes = len(ech) - len(meilleur)
-        note_segment = " (log brut: %d sections separees par des ruptures, ADEV sur la plus longue)" % len(groupes)
+        seg_count = len(groupes)
+        note_segment = " (log brut: %d sections separees par des ruptures, ADEV sur la plus longue)" % seg_count
         ech = meilleur
     if args.skip:
         ech = ech[args.skip:]
@@ -255,25 +257,38 @@ def main():
         for i, (t, a) in enumerate(zip(taus, adevs)):
             w.writerow(["%.0f" % t, "%.2f" % (t / 3600.0), "%.6e" % a, n - 2 * (i + 1)])
 
-    # ---- figure 2 panneaux
+    # ---- figure 2 panneaux (libelles en anglais pour publication/Instructable)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 7))
     t_h = np.arange(1, n + 1) * TAU0 / 3600.0
-    ax1.plot(t_h, ecart_hz, ".-", ms=3, lw=0.6, color="#0b6fa4")
+    l_freq, = ax1.plot(t_h, ecart_hz, ".-", ms=3, lw=0.6, color="#0b6fa4")
     ax1.axhline(0, color="k", lw=0.5)
-    ax1.set_xlabel("temps (heures)")
+    ax1.set_xlabel("time (hours)")
     ax1.set_ylabel("f - 10 MHz (Hz)")
-    ax1.set_title("GPSDO-YT - %d echantillons, %.1f h, porte 1000 s%s" % (n, duree_h, note_detrend))
+    titre = "GPSDO-YT - %d samples, %.1f h, 1000 s gate%s" % (n, duree_h, note_detrend)
+    if seg_count > 1:
+        titre += " - longest of %d continuous sections" % seg_count
+    ax1.set_title(titre)
     ax1.grid(True, which="both", alpha=0.3)
 
-    ax2.loglog(taus, adevs, "o-", ms=4, lw=1, color="#b3122f", label="deviation d'Allan")
+    # trace du PWM (DAC) sur un axe secondaire: montre l'action integrale du servo
+    # (une rampe lente = derive de l'OCXO que la boucle compense)
+    pwm_val = np.array([int(e[2], 16) for e in ech], dtype=float)
+    axt = ax1.twinx()
+    l_pwm, = axt.plot(t_h, pwm_val, "-", lw=0.9, color="#d6604d", alpha=0.8)
+    axt.set_ylabel("PWM (DAC counts)", color="#a33e33")
+    axt.tick_params(axis="y", colors="#a33e33")
+    ax1.legend([l_freq, l_pwm], ["frequency error (Hz)", "PWM (DAC counts)"],
+               fontsize=8, loc="best")
+
+    ax2.loglog(taus, adevs, "o-", ms=4, lw=1, color="#b3122f", label="Allan deviation")
     if len(taus) > 2:
-        for pente, txt, col in ((-0.5, "bruit blanc de frequence ($\\tau^{-1/2}$)", "#555555"),
-                                (0.0, "flicker de frequence", "#888888")):
+        for pente, txt, col in ((-0.5, "white FM ($\\tau^{-1/2}$)", "#555555"),
+                                (0.0, "flicker FM", "#888888")):
             ref = adevs[0] * (taus / taus[0]) ** pente
             ax2.loglog(taus, ref, ":", lw=1, color=col, label=txt)
-    ax2.set_xlabel("tau (s)")
+    ax2.set_xlabel("averaging time $\\tau$ (s)")
     ax2.set_ylabel("$\\sigma_y(\\tau)$")
-    ax2.set_title("Deviation d'Allan (plancher quantification ~3e-11 a 1000 s)")
+    ax2.set_title("Allan deviation (quantization floor ~3e-11 at 1000 s)")
     ax2.grid(True, which="both", alpha=0.3)
     ax2.legend(fontsize=8)
     fig.tight_layout()
