@@ -25,10 +25,15 @@ Plancher de ton setup: +-0.001 Hz = 1e-10 par echantillon -> sigma plancher
 d'environ 3e-11 a tau = 1000 s (quantification + jitter du 1PPS).
 
 Options:
-  -o PREFIX         prefixe des sorties (defaut: prefixe du fichier d'entree)
+  -o PREFIX         prefixe des fichiers de sortie (defaut: prefixe du fichier d'entree)
   --skip N          ignore les N premiers echantillons (fin de calibration phase 5)
   --detrend         retire la derive lineaire avant l'ADEV (utile en self-running)
   --gap S           ecart max entre 2 echantillons pour etre contigus (defaut 1100 s)
+  --max-frac X      trace la courbe jusqu'a tau = X x duree de la section
+                    (defaut 0.333 = regle T/3: au-dela, trop peu d'estimations
+                    independantes — les paires superposees partagent leurs donnees)
+  --min-pairs N     ne trace pas les points de moins de N paires (defaut 20)
+  --full            trace la courbe complete sans coupe (diagnostic)
 """
 
 import argparse
@@ -192,6 +197,12 @@ def main():
     ap.add_argument("--skip", type=int, default=0, help="ignore les N premiers echantillons")
     ap.add_argument("--detrend", action="store_true", help="retire la derive lineaire avant l'ADEV")
     ap.add_argument("--gap", type=float, default=1100.0, help="ecart max entre echantillons contigus (s)")
+    ap.add_argument("--max-frac", type=float, default=0.333,
+                    help="trace jusqu'a tau = X x duree de la section (defaut 0.333 = regle T/3)")
+    ap.add_argument("--min-pairs", type=int, default=20,
+                    help="ne trace pas les points de moins de N paires (defaut 20)")
+    ap.add_argument("--full", action="store_true",
+                    help="trace la courbe complete sans coupe (diagnostic)")
     args = ap.parse_args()
 
     texte, epochs = lire_log(args.log)
@@ -249,7 +260,30 @@ def main():
 
     taus, adevs = allan_superpose(y_adev, TAU0)
 
-    # ---- CSV des resultats ADEV
+    # ---- frontiere de confiance: au-dela, trop peu d'estimations INDEPENDANTES.
+    # Les paires superposees partagent leurs donnees: 75 paires a tau = T/2,
+    # c'est une seule comparaison entre les deux moities de l'enregistrement.
+    # Regles: tau <= max_frac x duree de la section continue ET paires >= min_pairs.
+    duree_s = n * TAU0
+    lim_tau = duree_s * args.max_frac
+    masque = [(t <= lim_tau) and (n - 2 * (i + 1) >= args.min_pairs)
+              for i, t in enumerate(taus)]
+    if args.full:
+        taus_t, adevs_t = taus, adevs
+        coupes = 0
+        note_confiance = " (--full: courbe complete affichee, sans regle de confiance)"
+    elif any(masque):
+        taus_t = [t for t, ok in zip(taus, masque) if ok]
+        adevs_t = [a for a, ok in zip(adevs, masque) if ok]
+        coupes = len(taus) - len(taus_t)
+        note_confiance = " (lecture fiable jusqu'a tau = %.1f h = T/%.0f ; %d points au-dela non traces, conserves dans le CSV)" % (
+            lim_tau / 3600.0, 1.0 / args.max_frac, coupes)
+    else:
+        taus_t, adevs_t = taus, adevs
+        coupes = 0
+        note_confiance = " (section trop courte pour la regle de confiance: courbe complete affichee, a prendre avec reserve)"
+
+    # ---- CSV des resultats ADEV (toujours complet)
     csv_out = prefixe + "_adev.csv"
     with open(csv_out, "w", newline="", encoding="utf-8") as fo:
         w = csv.writer(fo)
@@ -280,12 +314,12 @@ def main():
     ax1.legend([l_freq, l_pwm], ["frequency error (Hz)", "PWM (DAC counts)"],
                fontsize=8, loc="best")
 
-    ax2.loglog(taus, adevs, "o-", ms=4, lw=1, color="#b3122f", label="Allan deviation")
-    if len(taus) > 2:
+    ax2.loglog(taus_t, adevs_t, "o-", ms=4, lw=1, color="#b3122f", label="Allan deviation")
+    if len(taus_t) > 2:
         for pente, txt, col in ((-0.5, "white FM ($\\tau^{-1/2}$)", "#555555"),
                                 (0.0, "flicker FM", "#888888")):
-            ref = adevs[0] * (taus / taus[0]) ** pente
-            ax2.loglog(taus, ref, ":", lw=1, color=col, label=txt)
+            ref = adevs_t[0] * (taus_t / taus_t[0]) ** pente
+            ax2.loglog(taus_t, ref, ":", lw=1, color=col, label=txt)
     ax2.set_xlabel("averaging time $\\tau$ (s)")
     ax2.set_ylabel("$\\sigma_y(\\tau)$")
     ax2.set_title("Allan deviation (quantization floor ~3e-11 at 1000 s)")
@@ -304,16 +338,18 @@ def main():
     print("Ecart a 10 MHz: min %.3f Hz, max %.3f Hz, moyenne %.4f Hz"
           % (ecart_hz.min(), ecart_hz.max(), ecart_hz.mean()))
     print(note_detrend.strip(" ()"))
+    if note_confiance:
+        print("Confiance:" + note_confiance)
     print("-" * 62)
     print("   tau        sigma_y(tau)     paires")
     # table console log-espacee (le CSV contient tous les tau)
     i_affiche = []
     m = 1
-    while m <= len(adevs):
+    while m <= len(adevs_t):
         i_affiche.append(m - 1)
         m = max(m + 1, int(round(m * 1.4)))
     for i in i_affiche:
-        t, a = taus[i], adevs[i]
+        t, a = taus_t[i], adevs_t[i]
         print("%7.0f s (%5.2f h)   %.3e      %d" % (t, t / 3600.0, a, n - 2 * (i + 1)))
     print("=" * 62)
     print("Ecrit: %s" % png_out)
