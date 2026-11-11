@@ -320,6 +320,11 @@ def main():
                                 (0.0, "flicker FM", "#888888")):
             ref = adevs_t[0] * (taus_t / taus_t[0]) ** pente
             ax2.loglog(taus_t, ref, ":", lw=1, color=col, label=txt)
+    if coupes and not args.full:
+        ax2.axvline(lim_tau, color="#555555", lw=0.8, ls="--", alpha=0.6)
+        ax2.annotate("reliable limit (T/3)", xy=(lim_tau, 0.96),
+                     xycoords=ax2.get_xaxis_transform(),
+                     ha="right", va="top", fontsize=7, color="#555555")
     ax2.set_xlabel("averaging time $\\tau$ (s)")
     ax2.set_ylabel("$\\sigma_y(\\tau)$")
     ax2.set_title("Allan deviation (quantization floor ~3e-11 at 1000 s)")
