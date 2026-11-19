@@ -33,6 +33,9 @@ Options:
                     (defaut 0.333 = regle T/3: au-dela, trop peu d'estimations
                     independantes — les paires superposees partagent leurs donnees)
   --min-pairs N     ne trace pas les points de moins de N paires (defaut 20)
+  --max-dev HZ      exclut les echantillons au-dela de +/-HZ de 10 MHz
+                    (ex: --max-dev 0.05 pour rejeter une porte GPS aberrante
+                    genre 9,995,000.321 Hz ; par defaut: aucune exclusion)
   --full            trace la courbe complete sans coupe (diagnostic)
 """
 
@@ -201,6 +204,9 @@ def main():
                     help="trace jusqu'a tau = X x duree de la section (defaut 0.333 = regle T/3)")
     ap.add_argument("--min-pairs", type=int, default=20,
                     help="ne trace pas les points de moins de N paires (defaut 20)")
+    ap.add_argument("--max-dev", type=float, default=None, metavar="HZ",
+                    help="exclut les echantillons au-dela de +/-HZ de 10 MHz "
+                         "(ex: 0.05 pour une porte GPS aberrante)")
     ap.add_argument("--full", action="store_true",
                     help="trace la courbe complete sans coupe (diagnostic)")
     args = ap.parse_args()
@@ -238,6 +244,16 @@ def main():
         ech = meilleur
     if args.skip:
         ech = ech[args.skip:]
+
+    # ---- rejet optionnel des portes aberrantes (glitch 1PPS: le pulse arrive
+    # ~500 us trop tot, la porte lit genre 9,995,000.321 Hz = -5000 cycles).
+    # Une seule de ces lignes gonflerait sigma(1000 s) de 7.5e-11 a ~1.5e-9.
+    exclus_liste = []
+    if args.max_dev is not None:
+        exclus_liste = [(i + 1, e[1]) for i, e in enumerate(ech)
+                        if abs(e[1] - FREF) > args.max_dev]
+        ech = [e for e in ech if abs(e[1] - FREF) <= args.max_dev]
+
     n = len(ech)
     if n < 10:
         sys.exit("Seulement %d echantillons contigus: il faut au moins 10 pour un ADEV utile." % n)
@@ -339,6 +355,12 @@ def main():
     print("Echantillons: %d contigus de 1000 s  (%.2f heures)%s" % (n, duree_h, note_segment))
     if jetes:
         print("Echantillons ignores (trou horaire / hors sequence): %d" % jetes)
+    if args.max_dev is not None and exclus_liste:
+        print("Rejet --max-dev %.3f Hz: %d echantillon(s) exclu(s):" % (args.max_dev, len(exclus_liste)))
+        for i, fv in exclus_liste[:6]:
+            print("   mesure #%d : %.3f Hz (ecart %+.3f Hz)" % (i, fv, fv - FREF))
+        if len(exclus_liste) > 6:
+            print("   ... et %d autres" % (len(exclus_liste) - 6))
     print("PWM debut/fin: 0x%s -> 0x%s" % (pwm[0], pwm[-1]))
     print("Ecart a 10 MHz: min %.3f Hz, max %.3f Hz, moyenne %.4f Hz"
           % (ecart_hz.min(), ecart_hz.max(), ecart_hz.mean()))
