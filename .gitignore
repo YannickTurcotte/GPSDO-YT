@@ -9,3 +9,7 @@ Release/
 *.eep
 
 # Note: prep/Gpsdo.hex est suivi volontairement (fichier de distribution pour les usagers).
+
+# Cache Python
+__pycache__/
+*.pyc
